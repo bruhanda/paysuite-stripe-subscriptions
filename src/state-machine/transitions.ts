@@ -7,7 +7,7 @@ const TRANSITIONS = {
   incomplete: ['active', 'trialing', 'incomplete_expired', 'canceled'],
   incomplete_expired: [],
   trialing: ['active', 'past_due', 'canceled', 'unpaid', 'paused', 'incomplete_expired'],
-  active: ['past_due', 'canceled', 'unpaid', 'paused', 'trialing'],
+  active: ['past_due', 'canceled', 'unpaid', 'paused'],
   past_due: ['active', 'canceled', 'unpaid'],
   canceled: [],
   unpaid: ['active', 'canceled', 'past_due'],

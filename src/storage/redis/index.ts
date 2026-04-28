@@ -76,6 +76,27 @@ export function createRedisStore(client: RedisLike): IdempotencyStore {
       return 'in-flight';
     },
     async commit(key, { commitTtlSeconds }) {
+      // commit() requires a successful claim() first. Verify the current
+      // value is `claimed` before promoting to `committed`; if it isn't,
+      // raise rather than self-heal a missing or already-committed row.
+      let existing: string | null;
+      try {
+        existing = await client.get(key);
+      } catch (cause) {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message: 'Redis GET failed during commit.',
+          cause,
+        });
+      }
+      if (existing !== CLAIMED) {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message:
+            'Redis commit found no claimed key — the two-phase protocol requires claim() before commit().',
+          details: { key, observed: existing },
+        });
+      }
       try {
         await client.set(key, COMMITTED, 'EX', commitTtlSeconds);
       } catch (cause) {

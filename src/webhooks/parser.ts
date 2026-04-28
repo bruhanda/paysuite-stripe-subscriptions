@@ -3,6 +3,9 @@ import { type Result, err, ok } from '../core/result.js';
 import { ErrorCodes } from '../errors/codes.js';
 import { PaySuiteError } from '../errors/index.js';
 
+/** Module-level decoder; reused across calls to avoid per-invocation allocation. */
+const utf8Decoder = /* @__PURE__ */ new TextDecoder('utf-8', { fatal: true });
+
 /**
  * Parse a raw webhook payload (bytes or string) into a typed `Stripe.Event`.
  * Performs structural validation — `id`, `type`, and `data.object` must be
@@ -29,7 +32,7 @@ export function parseEvent(
   } else {
     const bytes = rawPayload instanceof Uint8Array ? rawPayload : new Uint8Array(rawPayload);
     try {
-      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      text = utf8Decoder.decode(bytes);
     } catch (cause) {
       return err(
         new PaySuiteError({
@@ -72,11 +75,16 @@ export function parseEvent(
 
 function isStripeEventShape(
   v: unknown,
-): v is { id: string; type: string; data: { object: unknown } } {
+): v is { id: string; type: string; data: { object: Record<string, unknown> } } {
   if (typeof v !== 'object' || v === null) return false;
   if (!('id' in v) || typeof v.id !== 'string') return false;
   if (!('type' in v) || typeof v.type !== 'string') return false;
   if (!('data' in v) || typeof v.data !== 'object' || v.data === null) return false;
   if (!('object' in v.data)) return false;
+  // `data.object` must itself be a non-null, non-array object — any other
+  // shape (string, number, null, array) would crash the reducer when it
+  // reaches for `.id` / `.customer` / `.items` on the inner value.
+  const inner = (v.data as { object: unknown }).object;
+  if (typeof inner !== 'object' || inner === null || Array.isArray(inner)) return false;
   return true;
 }

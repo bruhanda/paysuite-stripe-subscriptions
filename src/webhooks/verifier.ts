@@ -4,6 +4,7 @@ import { concatBytes, encodeUtf8, fromHex } from '../core/encoding.js';
 import { systemClock } from '../core/time.js';
 import { ErrorCodes } from '../errors/codes.js';
 import { ConfigError, SignatureVerificationError } from '../errors/index.js';
+import { parseEvent } from './parser.js';
 import { parseSignatureHeader } from './headers.js';
 
 /**
@@ -34,7 +35,13 @@ export interface VerifyOptions {
   secret: WebhookSecret;
   /** Max accepted age of the signature in seconds. Defaults to 300 (5 min). */
   tolerance?: number;
-  /** Override the clock — useful in tests. Defaults to `Date.now`. */
+  /**
+   * Override the clock — useful in tests. Must return **epoch milliseconds**
+   * (the same units as `Date.now()`), not unix-seconds. Stripe timestamps
+   * are unix-seconds and we convert internally — passing
+   * `() => Math.floor(Date.now() / 1000)` will misalign the tolerance check.
+   * Defaults to `Date.now`.
+   */
   now?: () => number;
 }
 
@@ -158,6 +165,11 @@ export async function verifyStripeSignature(opts: VerifyOptions): Promise<Verify
 
   let matched = false;
   for (const candidateHex of parsed.v1Signatures) {
+    // SHA-256 MACs are always 32 bytes / 64 hex characters. Reject any
+    // segment that can't possibly be a valid v1 signature before paying
+    // the cost of `fromHex` allocation + per-byte parse — cheap defence
+    // against an attacker spamming long bogus segments in the header.
+    if (candidateHex.length !== 64) continue;
     let candidate: Uint8Array;
     try {
       candidate = fromHex(candidateHex);
@@ -182,24 +194,23 @@ export async function verifyStripeSignature(opts: VerifyOptions): Promise<Verify
   }
 
   // Decode and parse — signature is verified, so the bytes are trusted JSON.
-  let event: Stripe.Event;
-  try {
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes);
-    // JSON.parse returns `any` in lib.es5.d.ts; the assignment narrows it
-    // to Stripe.Event for downstream callers.
-    event = JSON.parse(text);
-  } catch (cause) {
+  // We still run the structural validation in `parseEvent` so a malformed-
+  // but-signed payload (e.g. `data.object` is `null` or a string) surfaces
+  // as a `MALFORMED_PAYLOAD` error rather than crashing the reducer
+  // downstream with `Cannot read properties of null`.
+  const parsedEvent = parseEvent(payloadBytes);
+  if (!parsedEvent.ok) {
     return {
       ok: false,
       error: new SignatureVerificationError({
         code: ErrorCodes.MALFORMED_PAYLOAD,
-        message: 'Verified payload is not valid UTF-8 JSON.',
-        cause,
+        message: parsedEvent.error.message,
+        cause: parsedEvent.error,
       }),
     };
   }
 
-  return { ok: true, event, receivedAt: nowMs };
+  return { ok: true, event: parsedEvent.value, receivedAt: nowMs };
 }
 
 /**
@@ -225,6 +236,10 @@ export async function verifyStripeSignatureFromText(opts: {
   header: string;
   secret: WebhookSecret;
   tolerance?: number;
+  /**
+   * Clock override — must return **epoch milliseconds** (same units as
+   * `Date.now()`), not unix-seconds. See {@link VerifyOptions.now}.
+   */
   now?: () => number;
 }): Promise<VerifyResult> {
   const passOpts: VerifyOptions = {

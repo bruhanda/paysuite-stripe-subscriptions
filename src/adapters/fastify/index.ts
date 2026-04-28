@@ -27,13 +27,18 @@ export interface FastifyReplyLike {
  * handler. Your Fastify instance must be configured to deliver the raw
  * body — see the example.
  *
+ * Named `createFastifyPlugin` to reserve the export slot promised by the
+ * library's public API surface; the 0.1.x cut returns a route handler so
+ * the function can be promoted to a full `FastifyPluginCallback` later
+ * without renaming the export.
+ *
  * @param opts - The standard {@link WebhookHandlerOptions}.
  * @returns An async `(req, reply) => Promise<void>` handler.
  *
  * @example
  * ```ts
  * import Fastify from 'fastify';
- * import { createFastifyHandler } from '@paysuite/stripe-subscriptions/adapters/fastify';
+ * import { createFastifyPlugin } from '@paysuite/stripe-subscriptions/adapters/fastify';
  *
  * const app = Fastify();
  * app.addContentTypeParser(
@@ -41,13 +46,13 @@ export interface FastifyReplyLike {
  *   { parseAs: 'buffer' },
  *   (_req, body, done) => done(null, body),
  * );
- * app.post('/stripe/webhooks', createFastifyHandler({
+ * app.post('/stripe/webhooks', createFastifyPlugin({
  *   secret: process.env.STRIPE_WEBHOOK_SECRET as `whsec_${string}`,
  *   dispatcher,
  * }));
  * ```
  */
-export function createFastifyHandler<E extends StripeEventName = StripeEventName>(
+export function createFastifyPlugin<E extends StripeEventName = StripeEventName>(
   opts: WebhookHandlerOptions<E>,
 ): (req: FastifyRequestLike, reply: FastifyReplyLike) => Promise<void> {
   const handler = createWebhookHandler(opts);

@@ -770,6 +770,12 @@ export function createFastifyPlugin(opts: WebhookHandlerOptions): FastifyPluginC
 
 // /adapters/express
 export function createExpressMiddleware(opts: WebhookHandlerOptions): RequestHandler;
+
+// /adapters/sveltekit
+export function createSveltekitHandler(opts: WebhookHandlerOptions): (event: { request: Request }) => Promise<Response>;
+
+// /adapters/nitro
+export function createNitroHandler(opts: WebhookHandlerOptions): (request: Request) => Promise<Response>;
 ```
 
 ### 2.9 Storage adapters — `/storage/*`

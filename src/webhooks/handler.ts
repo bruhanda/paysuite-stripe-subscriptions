@@ -41,6 +41,15 @@ export interface WebhookHandlerOptions<E extends StripeEventName = StripeEventNa
   /** Hook called when an event arrives while another worker is in-flight on the same id. */
   onInFlight?: (eventId: string) => void;
   /**
+   * HTTP status returned when an event is observed as `'in-flight'`. Default
+   * `503` (Service Unavailable) — semantically closer to "another worker is
+   * mid-flight, ask Stripe to come back later" than the previous `425`
+   * (which is a TLS-replay-protection code) and aligned with what infra
+   * teams typically alert on. Set to `425` to restore the original behaviour
+   * if your infrastructure expects it.
+   */
+  inFlightStatus?: number;
+  /**
    * Hook called for unexpected errors inside dispatched handlers. The library
    * still returns 5xx so Stripe retries — the hook is informational only.
    */
@@ -93,6 +102,7 @@ export function createWebhookHandler<E extends StripeEventName = StripeEventName
   const tolerance = opts.tolerance;
   const dispatcher = opts.dispatcher;
   const logger = opts.logger;
+  const inFlightStatus = opts.inFlightStatus ?? 503;
 
   return async function webhookHandler(request: Request): Promise<Response> {
     const headerValue = request.headers.get('stripe-signature');
@@ -142,8 +152,9 @@ export function createWebhookHandler<E extends StripeEventName = StripeEventName
           return plainText(200, 'Duplicate event — already committed.');
         }
         safeCall(opts.onInFlight, event.id);
-        // 425 Too Early — Stripe will retry.
-        return plainText(425, 'Event already in-flight on another worker.');
+        // Default 503 Service Unavailable — semantically "another worker is
+        // mid-flight, retry shortly". Configurable via `inFlightStatus`.
+        return plainText(inFlightStatus, 'Event already in-flight on another worker.');
       }
       return plainText(200, 'OK');
     } catch (error) {

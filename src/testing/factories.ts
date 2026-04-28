@@ -3,8 +3,13 @@ import type { StripeEventName, StripeEventOf } from '../events/types.js';
 
 const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 
-/** Defaults applied by {@link buildSubscription} before overrides. */
-const SUBSCRIPTION_DEFAULTS = {
+/**
+ * Factory returning a fresh defaults object on every call. Each call returns
+ * brand-new nested objects (`metadata`, `items`) so a test that mutates a
+ * returned subscription cannot leak into a sibling test via a shared
+ * reference.
+ */
+const buildSubscriptionDefaults = () => ({
   id: 'sub_test_default',
   object: 'subscription',
   status: 'active',
@@ -15,7 +20,7 @@ const SUBSCRIPTION_DEFAULTS = {
   metadata: {},
   trial_end: null,
   trial_start: null,
-} as const;
+});
 
 /**
  * Build a structurally-valid `Stripe.Subscription` for unit tests. Only the
@@ -37,7 +42,7 @@ export function buildSubscription(
   const periodStart = nowSeconds();
   const periodEnd = periodStart + 30 * 24 * 3600;
   const base = {
-    ...SUBSCRIPTION_DEFAULTS,
+    ...buildSubscriptionDefaults(),
     current_period_start: periodStart,
     current_period_end: periodEnd,
     items: {

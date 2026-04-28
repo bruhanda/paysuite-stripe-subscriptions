@@ -41,7 +41,9 @@ export function parseSignatureHeader(header: string): ParsedSignatureHeader | nu
 
     if (key === 't') {
       const n = Number(value);
-      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+      // `Number.isInteger` returns false for `NaN`, `±Infinity`, and any
+      // non-integer — covers the cases an explicit `Number.isFinite` would.
+      if (!Number.isInteger(n) || n < 0) return null;
       timestamp = n;
     } else if (key === 'v1') {
       if (value.length === 0) return null;

@@ -38,6 +38,12 @@ export interface EventDispatcher<Registered extends StripeEventName = never> {
    * Register a fallback handler invoked for *every* dispatched event,
    * after any matching typed handler has run. Multiple `onAny` handlers
    * compose in registration order.
+   *
+   * NOTE: `onAny` handlers do **not** run if the typed handler throws —
+   * dispatch propagates the typed-handler error directly to the caller so
+   * the wrapping idempotency guard can `release` and Stripe can retry.
+   * This means `onAny` is a useful telemetry surface for *successful*
+   * deliveries but not a reliable place for catch-all error logging.
    */
   onAny(handler: AnyHandler): EventDispatcher<Registered>;
 

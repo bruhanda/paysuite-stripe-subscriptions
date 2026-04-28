@@ -1,6 +1,14 @@
 import { ErrorCodes } from '../../errors/codes.js';
-import { StoreError } from '../../errors/index.js';
+import { ConfigError, StoreError } from '../../errors/index.js';
 import type { ClaimState, IdempotencyStore } from '../../idempotency/store.js';
+
+/**
+ * Strict identifier check for the configurable `table` name. Letters, digits,
+ * and underscores; must not start with a digit. The whole string is later
+ * interpolated into SQL — the regex is the only barrier between caller config
+ * and statement injection, so it stays deliberately strict.
+ */
+const IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 /**
  * Minimal SQL executor shape. Mirrors `node-postgres`'s `query` method,
@@ -50,6 +58,13 @@ export function createPostgresStore(
   opts: PostgresStoreOptions = {},
 ): IdempotencyStore {
   const table = opts.table ?? DEFAULT_TABLE;
+  if (!IDENTIFIER_PATTERN.test(table)) {
+    throw new ConfigError({
+      code: ErrorCodes.CONFIG_INVALID,
+      message: `Invalid Postgres table name: ${JSON.stringify(table)}. Must match /^[a-zA-Z_][a-zA-Z0-9_]*$/.`,
+      details: { table },
+    });
+  }
 
   return {
     async claim(key, { claimTtlSeconds }): Promise<ClaimState> {
@@ -90,10 +105,11 @@ export function createPostgresStore(
     },
     async commit(key, { commitTtlSeconds }) {
       const expires = new Date(Date.now() + commitTtlSeconds * 1000);
+      let result: { rowCount: number };
       try {
-        await executor.query(
-          `INSERT INTO ${table} (key, status, expires_at) VALUES ($1, 'committed', $2)
-           ON CONFLICT (key) DO UPDATE SET status = 'committed', expires_at = EXCLUDED.expires_at`,
+        result = await executor.query(
+          `UPDATE ${table} SET status = 'committed', expires_at = $2
+           WHERE key = $1 AND status = 'claimed'`,
           [key, expires],
         );
       } catch (cause) {
@@ -101,6 +117,17 @@ export function createPostgresStore(
           code: ErrorCodes.STORE_UNAVAILABLE,
           message: 'Postgres commit failed.',
           cause,
+        });
+      }
+      if (result.rowCount !== 1) {
+        // commit() requires a successful claim() first. Any other state
+        // (no row, already committed, claim expired) is a protocol bug —
+        // surface it loudly rather than self-healing.
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message:
+            'Postgres commit found no claimed row — the two-phase protocol requires claim() before commit().',
+          details: { key },
         });
       }
     },
