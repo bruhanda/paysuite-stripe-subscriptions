@@ -5,7 +5,7 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](https://www.typescriptlang.org/)
 
-TypeScript-first, Edge-Runtime-ready toolkit for Stripe Billing subscriptions — webhook
+TypeScript-first, Edge-Runtime-ready toolkit for Stripe Billing subscriptions - webhook
 verification, type-safe event dispatch, a subscription state machine, declarative
 plan→feature mapping, and pluggable idempotency.
 
@@ -19,29 +19,29 @@ canceled` state machine, and dispatching to typed handlers. Each rewrite ships t
 bugs (timestamp tolerance, dedup race windows, body re-stringification breaking HMAC).
 
 `@paysuite/stripe-subscriptions` ships those primitives once, treeshakes to ~5 KB for a
-typical Edge handler, and stays a library — not a boilerplate, not a SaaS, not a
+typical Edge handler, and stays a library - not a boilerplate, not a SaaS, not a
 framework.
 
 ## Features
 
-- **Cross-runtime webhook verification** — single code path for Node 18+, Bun, Deno,
+- **Cross-runtime webhook verification** - single code path for Node 18+, Bun, Deno,
   Vercel/Next.js Edge Runtime, and Cloudflare Workers, built entirely on Web Crypto.
-- **Two-phase idempotency** — `claim → run → commit/release` with pluggable storage
+- **Two-phase idempotency** - `claim → run → commit/release` with pluggable storage
   (in-memory, Redis, Postgres, Cloudflare KV, Cloudflare Durable Objects).
-- **Type-safe event dispatcher** — register handlers per event name; `event.data.object`
+- **Type-safe event dispatcher** - register handlers per event name; `event.data.object`
   is narrowed precisely (e.g. `Stripe.Subscription` for `customer.subscription.updated`).
   Re-registration is a compile error.
-- **Subscription state machine** — pure event-sourced reducer, validated transition
+- **Subscription state machine** - pure event-sourced reducer, validated transition
   table, per-instance transition router for side effects.
-- **Declarative plan → feature mapping** — `definePlans({ ... } as const)` infers the
+- **Declarative plan → feature mapping** - `definePlans({ ... } as const)` infers the
   feature union, price-id literals, and plan names; no manual generics.
-- **Framework adapters** — Next.js (App + Pages Router), Hono, Fastify, Express,
-  SvelteKit, Nitro/Nuxt — each adapter is a thin, opt-in subpath.
-- **Structured errors** — every error carries a stable `code`, optional structured
+- **Framework adapters** - Next.js (App + Pages Router), Hono, Fastify, Express,
+  SvelteKit, Nitro/Nuxt - each adapter is a thin, opt-in subpath.
+- **Structured errors** - every error carries a stable `code`, optional structured
   `details`, and a JSON-serializable `toJSON()` for observability stacks.
-- **Testing utilities** — factories for events and subscriptions, a `signPayload`
+- **Testing utilities** - factories for events and subscriptions, a `signPayload`
   helper that produces real Stripe-format signatures, and a spy-able idempotency store.
-- **Tree-shakeable** — `"sideEffects": false`, every concern lives behind its own
+- **Tree-shakeable** - `"sideEffects": false`, every concern lives behind its own
   subpath export, dual ESM + CJS emit.
 
 ## Quick Start
@@ -83,12 +83,12 @@ runtime-validated configs.
 The library has one entry per concern. Subpath imports are the recommended path; the
 root entry only re-exports `VERSION` and a few shared types.
 
-### Root — `@paysuite/stripe-subscriptions`
+### Root - `@paysuite/stripe-subscriptions`
 
 | Export        | Kind  | Description                                      |
 |---------------|-------|--------------------------------------------------|
 | `VERSION`     | const | Library version string, kept in sync with `package.json`. |
-| `PaySuiteError` | type  | Type-only re-export of the base error class — import the value from `/errors`. |
+| `PaySuiteError` | type  | Type-only re-export of the base error class - import the value from `/errors`. |
 | `Result`, `Ok`, `Err` | types | Discriminated-union utility types used throughout the library. |
 
 ---
@@ -99,11 +99,11 @@ root entry only re-exports `VERSION` and a few shared types.
 
 Verify a Stripe webhook signature using HMAC-SHA256 over the canonical
 `${timestamp}.${payload}` string. Runs identically in Node 18+, Bun, Deno, Edge Runtime
-and Cloudflare Workers — implemented entirely on Web Crypto.
+and Cloudflare Workers - implemented entirely on Web Crypto.
 
 ```ts
 type VerifyOptions = {
-  payload: Uint8Array | ArrayBuffer; // raw bytes — never re-encoded JSON
+  payload: Uint8Array | ArrayBuffer; // raw bytes - never re-encoded JSON
   header: string;                     // Stripe-Signature header value
   secret: `whsec_${string}`;
   tolerance?: number;                 // seconds; default 300
@@ -133,12 +133,12 @@ console.log('Verified event:', result.event.type);
 #### `verifyStripeSignatureFromText(opts) => Promise<VerifyResult>`
 
 Escape hatch for callers that only have the body as a string. UNSAFE for non-ASCII
-payloads — prefer `verifyStripeSignature` whenever possible.
+payloads - prefer `verifyStripeSignature` whenever possible.
 
 #### `parseEvent(rawPayload) => Result<Stripe.Event, PaySuiteError>`
 
 Parse a verified raw payload (bytes or string) into a typed `Stripe.Event`. Performs
-structural validation — `id`, `type`, and `data.object` must be present. Returns
+structural validation - `id`, `type`, and `data.object` must be present. Returns
 `Err(MALFORMED_PAYLOAD)` for invalid UTF-8, invalid JSON, or non-Stripe shapes.
 
 ```ts
@@ -198,7 +198,7 @@ Low-level parser for the `Stripe-Signature` header. Tolerates whitespace and mul
 #### `createDispatcher() => EventDispatcher<never>`
 
 Build a type-safe event router. Each `.on()` returns a new dispatcher whose phantom
-parameter accumulates the registered events — re-registering the same event is a
+parameter accumulates the registered events - re-registering the same event is a
 compile error. Call `.build()` to seal the registration surface.
 
 Supported event names:
@@ -235,7 +235,7 @@ const dispatcher = createDispatcher()
 await dispatcher.dispatch(event);
 ```
 
-> Handlers run **strictly sequentially** in registration order — the typed handler
+> Handlers run **strictly sequentially** in registration order - the typed handler
 > first, then each `onAny` in order. If you need parallel work, fan out from inside
 > a single handler with `Promise.all`.
 
@@ -251,7 +251,7 @@ if (isSubscriptionEvent(event)) {
 
 #### `StripeEventName`, `StripeEventOf<N>`
 
-Exported types — `StripeEventName` is the closed literal union of supported events,
+Exported types - `StripeEventName` is the closed literal union of supported events,
 `StripeEventOf<N>` extracts the precise event variant for a given name.
 
 ---
@@ -298,7 +298,7 @@ type SubscriptionState = {
   currentPeriodEnd: number;       // unix-seconds
   cancelAtPeriodEnd: boolean;
   trialEnd: number | null;        // unix-seconds, or null
-  updatedAt: number;              // unix-seconds — high-water mark
+  updatedAt: number;              // unix-seconds - high-water mark
 };
 ```
 
@@ -312,7 +312,7 @@ await db.upsertSubscription(next);
 #### `createTransitionRouter() => TransitionRouter`
 
 Per-instance router from `(from, to)` status pairs to typed effect functions. No
-module-level mutable state — each Stripe account / test gets its own router.
+module-level mutable state - each Stripe account / test gets its own router.
 
 ```ts
 import { createTransitionRouter } from '@paysuite/stripe-subscriptions/state-machine';
@@ -335,7 +335,7 @@ await router.run({ from: prev.status, to: next.status, subscription: next });
 #### `definePlans(plans) => PlansConfig<P>`
 
 Define your application's plans as a `const` object. The returned value is the same
-object with a virtual brand attached at the type level — at runtime nothing changes.
+object with a virtual brand attached at the type level - at runtime nothing changes.
 
 ```ts
 import { definePlans, type FeatureOf } from '@paysuite/stripe-subscriptions/plans';
@@ -352,16 +352,16 @@ type Feature = FeatureOf<typeof plans>;
 #### `resolveFeatures(plans, priceId) => readonly Feature[] | null`
 
 Resolve a Stripe price id to its declared feature list. Returns `null` for unknown
-ids — narrow before use.
+ids - narrow before use.
 
 #### `hasFeature(plans, priceId, feature) => boolean`
 
-**Asserting** check — throws `ConfigError(UNKNOWN_PRICE_ID)` for unknown ids. Use this
+**Asserting** check - throws `ConfigError(UNKNOWN_PRICE_ID)` for unknown ids. Use this
 inside trusted code paths where the price id originates from your own plan config.
 
 #### `isFeatureEnabled(plans, priceId, feature) => boolean | null`
 
-**Tolerant** check — returns `null` for unknown ids so callers can choose their own
+**Tolerant** check - returns `null` for unknown ids so callers can choose their own
 default (log, deny, fall back).
 
 #### `PlanNameOf<P>`, `PriceIdOf<P>`, `FeatureOf<P>`
@@ -408,19 +408,19 @@ const r = await withIdempotency(store, `stripe:event:${event.id}`, async () => {
 if (!r.ran) log('skipped', r.reason);
 ```
 
-> **Honest framing.** This subsystem provides *de-duplicated, at-least-once* — not
+> **Honest framing.** This subsystem provides *de-duplicated, at-least-once* - not
 > exactly-once. Handlers must be internally idempotent for the worker-crash retry case.
 > See the *Idempotency semantics* section below for the bounded double-execution
 > window and the stolen-claim hazard.
 
 #### `createMemoryStore(opts?)`
 
-Default in-memory store — single-process only. Replace with Redis / Postgres /
+Default in-memory store - single-process only. Replace with Redis / Postgres /
 Durable Objects before deploying.
 
 #### `DEFAULT_CLAIM_TTL_SECONDS`, `DEFAULT_COMMIT_TTL_SECONDS`
 
-Default TTLs — 60 seconds for the in-flight claim, 7 days for the commit marker.
+Default TTLs - 60 seconds for the in-flight claim, 7 days for the commit marker.
 
 ---
 
@@ -431,7 +431,7 @@ plus optional `details`. Errors are JSON-serializable via `toJSON()`.
 
 | Class | Codes |
 |---|---|
-| `PaySuiteError` | base class — superclass of every error below |
+| `PaySuiteError` | base class - superclass of every error below |
 | `SignatureVerificationError` | `INVALID_SIGNATURE_FORMAT`, `SIGNATURE_TIMESTAMP_TOO_OLD`, `SIGNATURE_TIMESTAMP_IN_FUTURE`, `SIGNATURE_MISMATCH`, `MALFORMED_PAYLOAD` |
 | `InvalidTransitionError` | `INVALID_TRANSITION` |
 | `ConfigError` | `CONFIG_INVALID`, `MISSING_SECRET`, `UNKNOWN_PRICE_ID` |
@@ -458,13 +458,13 @@ try {
 All four production adapters implement the same `IdempotencyStore` interface. Pass
 the result to `createWebhookHandler({ store })`.
 
-#### `/storage/memory` — `createMemoryStore(opts?)`
+#### `/storage/memory` - `createMemoryStore(opts?)`
 
 Single-process only. Useful for local dev and unit tests; emphatically **not** for
-multi-worker deployments. The internal map is bounded — `maxKeys` defaults to 10 000;
+multi-worker deployments. The internal map is bounded - `maxKeys` defaults to 10 000;
 expired entries are swept on every claim, then oldest-committed entries are evicted.
 
-#### `/storage/redis` — `createRedisStore(client)`
+#### `/storage/redis` - `createRedisStore(client)`
 
 Atomic claim via `SET … NX EX`. Compatible with `ioredis` out of the box; for
 `@upstash/redis` wrap the client in a five-line shim that translates positional
@@ -477,7 +477,7 @@ import { createRedisStore } from '@paysuite/stripe-subscriptions/storage/redis';
 const store = createRedisStore(new Redis(process.env.REDIS_URL!));
 ```
 
-#### `/storage/postgres` — `createPostgresStore(executor, opts?)`
+#### `/storage/postgres` - `createPostgresStore(executor, opts?)`
 
 Atomic claim via `INSERT … ON CONFLICT DO NOTHING`. Expired claims can be safely
 stolen on a follow-up update. Accepts any client wrapped to a tiny `SqlExecutor`
@@ -502,22 +502,22 @@ const store = createPostgresStore({
 ```
 
 The `table` option is matched against `/^[a-zA-Z_][a-zA-Z0-9_]*$/` before being
-interpolated into SQL — invalid identifiers throw at construction time.
+interpolated into SQL - invalid identifiers throw at construction time.
 
-#### `/storage/kv` — `createKvStore(kv)`
+#### `/storage/kv` - `createKvStore(kv)`
 
-Cloudflare Workers KV / Vercel KV. **Best-effort only** — KV lacks atomic
+Cloudflare Workers KV / Vercel KV. **Best-effort only** - KV lacks atomic
 SET-IF-ABSENT, so two concurrent workers can both observe the key as absent. Pair
 with `/storage/durable-objects` (or document handlers as internally idempotent).
 
-#### `/storage/durable-objects` — `createDurableObjectStore(stub)`
+#### `/storage/durable-objects` - `createDurableObjectStore(stub)`
 
 Strict atomic claim via a Durable Object class. The DO is single-threaded per id, so
 claim → commit is serialized. The package documents a ~30-line reference DO class.
 
 ---
 
-### Testing — `@paysuite/stripe-subscriptions/testing`
+### Testing - `@paysuite/stripe-subscriptions/testing`
 
 #### `buildSubscription(overrides?) => Stripe.Subscription`
 
@@ -539,7 +539,7 @@ const event = buildEvent(
 
 #### `signPayload(opts) => Promise<string>`
 
-Produce a valid `Stripe-Signature` header for an arbitrary payload — useful for
+Produce a valid `Stripe-Signature` header for an arbitrary payload - useful for
 unit-testing your webhook handler without spinning up `stripe listen`.
 
 ```ts
@@ -570,7 +570,7 @@ conventions. Every adapter accepts the same `WebhookHandlerOptions`.
 
 ## Framework guides
 
-### Next.js — App Router (Edge Runtime)
+### Next.js - App Router (Edge Runtime)
 
 ```ts
 // app/api/stripe/webhooks/route.ts
@@ -591,7 +591,7 @@ export const { POST } = createNextRouteHandler({
 });
 ```
 
-### Next.js — Pages Router
+### Next.js - Pages Router
 
 ```ts
 // pages/api/stripe/webhooks.ts
@@ -601,7 +601,7 @@ import {
 } from '@paysuite/stripe-subscriptions/adapters/next';
 import { createDispatcher } from '@paysuite/stripe-subscriptions/events';
 
-export { config }; // disables Next's default body parser — required
+export { config }; // disables Next's default body parser - required
 
 const dispatcher = createDispatcher()
   .on('invoice.payment_failed', async (event) => notifyOps(event))
@@ -637,7 +637,7 @@ app.post(
 ### Express
 
 Stripe webhooks need the raw body, so mount `express.raw({ type: 'application/json' })`
-on the webhook path *before* this middleware — without it Express's default JSON
+on the webhook path *before* this middleware - without it Express's default JSON
 parser will mutate the bytes Stripe signed.
 
 ```ts
@@ -669,7 +669,7 @@ import { createFastifyPlugin } from '@paysuite/stripe-subscriptions/adapters/fas
 
 const app = Fastify();
 
-// Deliver the raw bytes — Stripe signed them, not the parsed JSON.
+// Deliver the raw bytes - Stripe signed them, not the parsed JSON.
 app.addContentTypeParser(
   'application/json',
   { parseAs: 'buffer' },
@@ -759,17 +759,17 @@ options:
 
 | Option           | Type                                              | Default   | Description |
 |------------------|---------------------------------------------------|-----------|-------------|
-| `secret`         | `` `whsec_${string}` ``                           | —         | Stripe webhook signing secret. Required. Validated at construction. |
-| `dispatcher`     | `SealedDispatcher`                                | —         | The result of `createDispatcher()…build()`. Required. |
-| `store`          | `IdempotencyStore`                                | in-memory | Pluggable de-duplication store. The default is single-process — replace before deploying. |
+| `secret`         | `` `whsec_${string}` ``                           | -         | Stripe webhook signing secret. Required. Validated at construction. |
+| `dispatcher`     | `SealedDispatcher`                                | -         | The result of `createDispatcher()…build()`. Required. |
+| `store`          | `IdempotencyStore`                                | in-memory | Pluggable de-duplication store. The default is single-process - replace before deploying. |
 | `tolerance`      | `number` (seconds)                                | `300`     | Symmetric signature freshness window. Rejects both stale and future-dated timestamps. |
 | `claimTtl`       | `number` (seconds)                                | `60`      | TTL of the in-flight claim. Should exceed worst-case handler runtime. |
-| `commitTtl`      | `number` (seconds)                                | `604_800` | TTL of the committed marker — sized to outlive Stripe's 3-day retry window with margin. |
+| `commitTtl`      | `number` (seconds)                                | `604_800` | TTL of the committed marker - sized to outlive Stripe's 3-day retry window with margin. |
 | `inFlightStatus` | `number`                                          | `503`     | HTTP status returned when another worker holds the claim. Set to `425` for the original behaviour. |
-| `onDuplicate`    | `(eventId: string) => void`                       | —         | Called when an event is skipped because it was already committed. |
-| `onInFlight`     | `(eventId: string) => void`                       | —         | Called when an event arrives while another worker is mid-flight on the same id. |
-| `onError`        | `(error: unknown, event: Stripe.Event) => void`   | —         | Called for unexpected handler errors. The library still returns 5xx so Stripe retries. |
-| `logger`         | `{ warn(msg, ctx?); error(msg, ctx?) }`           | —         | Optional structured logger (Pino, Winston, console-shimmed). Only `warn`/`error` are called. |
+| `onDuplicate`    | `(eventId: string) => void`                       | -         | Called when an event is skipped because it was already committed. |
+| `onInFlight`     | `(eventId: string) => void`                       | -         | Called when an event arrives while another worker is mid-flight on the same id. |
+| `onError`        | `(error: unknown, event: Stripe.Event) => void`   | -         | Called for unexpected handler errors. The library still returns 5xx so Stripe retries. |
+| `logger`         | `{ warn(msg, ctx?); error(msg, ctx?) }`           | -         | Optional structured logger (Pino, Winston, console-shimmed). Only `warn`/`error` are called. |
 
 ### Idempotency semantics
 
@@ -783,10 +783,10 @@ failure.
 | `in-flight`             | `503` (default)    | Retries shortly.                 |
 | handler throws          | `500`              | Retries with backoff.            |
 
-This is **de-duplicated, at-least-once** — exactly-once across an HTTP boundary is
+This is **de-duplicated, at-least-once** - exactly-once across an HTTP boundary is
 impossible without coordination the host app must own (transactional outbox). Handlers
 must be internally idempotent. The bounded double-execution window equals
-`claimTtlSeconds` — if a worker dies after running the handler but before committing,
+`claimTtlSeconds` - if a worker dies after running the handler but before committing,
 the next retry runs the handler again once the claim expires.
 
 The 0.1.x protocol does not yet carry a fencing token; if a worker's `claimTtl`
@@ -797,21 +797,21 @@ explicit fencing.
 
 ## TypeScript features
 
-- **Strict TypeScript** — `strict`, `noUncheckedIndexedAccess`,
+- **Strict TypeScript** - `strict`, `noUncheckedIndexedAccess`,
   `exactOptionalPropertyTypes`, `verbatimModuleSyntax` all on.
-- **Branded webhook secret** — `WebhookSecret = `whsec_${string}`` makes passing a
+- **Branded webhook secret** - `WebhookSecret = `whsec_${string}`` makes passing a
   publishable (`pk_…`) or restricted (`rk_…`) key a compile error.
-- **Narrowed event payloads** — `dispatcher.on('customer.subscription.updated', …)`
+- **Narrowed event payloads** - `dispatcher.on('customer.subscription.updated', …)`
   gives you `event.data.object: Stripe.Subscription` with no manual cast.
-- **Const-inferred plans** — `definePlans({ … } as const)` flows literal types into
+- **Const-inferred plans** - `definePlans({ … } as const)` flows literal types into
   `PlanNameOf<P>`, `PriceIdOf<P>`, `FeatureOf<P>` without manual generics.
-- **Phantom registration tracking** — the dispatcher's type parameter accumulates
+- **Phantom registration tracking** - the dispatcher's type parameter accumulates
   registered events; re-registering the same event is a compile error.
-- **Discriminated `Result<T, E>`** — expected control flow (signature mismatch,
+- **Discriminated `Result<T, E>`** - expected control flow (signature mismatch,
   invalid transition, unknown plan) is `Result`-shaped, not `try/catch`.
-- **Closed `ErrorCode` literal union** — `switch (err.code) { … }` narrows
+- **Closed `ErrorCode` literal union** - `switch (err.code) { … }` narrows
   exhaustively.
-- **Subpath types** — every subpath ships its own `.d.ts` and is listed in
+- **Subpath types** - every subpath ships its own `.d.ts` and is listed in
   `typesVersions` so editors resolve types without `paths` config.
 
 ## Comparison vs alternatives
@@ -823,20 +823,20 @@ explicit fencing.
 | `@layeredapps/stripe-subscriptions` | 45 | 120 | ✗ | ✗ | ✓ | partial | ✗ | own framework |
 | `stripe-event-types` | 280 | 10 K | types only | n/a | ✗ | ✗ | ✗ | ✗ |
 | `@tsed/stripe` | 2.9 K | 320 | ✓ | ✗ | ✗ | ✗ | ✗ | Ts.ED only |
-| **`@paysuite/stripe-subscriptions`** | — | — | ✓ | ✓ | ✓ | ✓ | ✓ | Next, Hono, Fastify, Express, SvelteKit, Nitro |
+| **`@paysuite/stripe-subscriptions`** | - | - | ✓ | ✓ | ✓ | ✓ | ✓ | Next, Hono, Fastify, Express, SvelteKit, Nitro |
 
-The official `stripe` SDK remains the canonical low-level client — this library uses
+The official `stripe` SDK remains the canonical low-level client - this library uses
 it as a peer dependency for types. `@paysuite/stripe-subscriptions` complements it by
 filling the cross-runtime, idempotency, plan-mapping and adapter gaps that every team
 otherwise rebuilds by hand. For end-to-end SaaS boilerplates with UI scaffolding
-(ShipFast, Supastarter, Makerkit) the trade-off is different — those bundle a whole
+(ShipFast, Supastarter, Makerkit) the trade-off is different - those bundle a whole
 project structure for a one-time licence fee; this library drops into whatever stack
 you already run, and stays a library.
 
 ## Examples
 
 Three runnable examples live under [`examples/`](./examples). Each one is fully
-self-contained — payloads are synthesized and signed with the library's own testing
+self-contained - payloads are synthesized and signed with the library's own testing
 utilities, so no Stripe account or `stripe listen` is required.
 
 | Example | What it shows | Run | StackBlitz |
@@ -846,7 +846,7 @@ utilities, so no Stripe account or `stripe listen` is required.
 | [`with-hono.ts`](./examples/with-hono.ts) | `createHonoMiddleware` on a Hono route, exercised via `app.fetch(Request)` with a `createSpyStore` to verify the claim/commit call log. | `npx tsx examples/with-hono.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/with-hono) |
 
 The `examples/sandbox/` directory contains a self-contained npm package per example,
-suitable for opening directly in [StackBlitz](https://stackblitz.com) — useful when
+suitable for opening directly in [StackBlitz](https://stackblitz.com) - useful when
 you want to fork an example into a new project without cloning the whole repo.
 
 ## Compatibility
