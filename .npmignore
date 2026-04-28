@@ -1,0 +1,65 @@
+# package.json `files` is the source of truth for what ships to npm —
+# this .npmignore is defence-in-depth for paths that must never leak.
+
+# Source & build configs
+src/
+tests/
+__tests__/
+*.test.ts
+*.spec.ts
+tsconfig.json
+tsconfig.*.json
+tsup.config.ts
+vitest.config.ts
+biome.json
+
+# Planning, internal docs, review notes
+PLAN.md
+REVIEW.md
+docs/
+notes/
+.scratch/
+
+# Examples & sandboxes
+examples/
+sandbox/
+playground/
+
+# Coverage & build artefacts
+coverage/
+.nyc_output/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Source control & CI
+.git/
+.gitignore
+.gitattributes
+.github/
+.changeset/
+.husky/
+
+# Editor / OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Tooling state
+.eslintcache
+.prettierignore
+.prettierrc*
+.eslintrc*
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Lockfiles — npm reads from package.json on install, lockfiles are dev-only
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lockb
