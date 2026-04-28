@@ -1,0 +1,1 @@
+{"version":3,"sources":["../src/version.ts"],"names":[],"mappings":";AAIO,IAAM,OAAA,GAAU","file":"index.js","sourcesContent":["/**\n * The current library version. Kept in sync with `package.json` by the release\n * script — do not edit by hand.\n */\nexport const VERSION = '0.1.0';\n"]}

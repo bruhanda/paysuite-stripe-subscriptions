@@ -1,0 +1,192 @@
+{
+  "name": "@paysuite/stripe-subscriptions",
+  "version": "0.1.0",
+  "description": "TypeScript-first, Edge-Runtime-ready toolkit for Stripe Billing subscriptions: cross-runtime webhook verification, type-safe event dispatcher, subscription state machine, declarative plan-to-feature mapping, and pluggable idempotency.",
+  "keywords": [
+    "stripe",
+    "stripe-subscriptions",
+    "stripe-billing",
+    "stripe-webhooks",
+    "subscription",
+    "billing",
+    "saas",
+    "typescript",
+    "edge-runtime",
+    "nextjs",
+    "hono",
+    "webhook-verification",
+    "idempotency",
+    "feature-flags"
+  ],
+  "license": "MIT",
+  "author": "Vasyl Bruhanda",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paysuite/stripe-subscriptions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paysuite/stripe-subscriptions/issues"
+  },
+  "homepage": "https://github.com/paysuite/stripe-subscriptions#readme",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks/index.d.ts",
+      "import": "./dist/webhooks/index.js"
+    },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "import": "./dist/events/index.js"
+    },
+    "./state-machine": {
+      "types": "./dist/state-machine/index.d.ts",
+      "import": "./dist/state-machine/index.js"
+    },
+    "./plans": {
+      "types": "./dist/plans/index.d.ts",
+      "import": "./dist/plans/index.js"
+    },
+    "./idempotency": {
+      "types": "./dist/idempotency/index.d.ts",
+      "import": "./dist/idempotency/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js"
+    },
+    "./adapters/next": {
+      "types": "./dist/adapters/next/index.d.ts",
+      "import": "./dist/adapters/next/index.js"
+    },
+    "./adapters/hono": {
+      "types": "./dist/adapters/hono/index.d.ts",
+      "import": "./dist/adapters/hono/index.js"
+    },
+    "./adapters/fastify": {
+      "types": "./dist/adapters/fastify/index.d.ts",
+      "import": "./dist/adapters/fastify/index.js"
+    },
+    "./adapters/express": {
+      "types": "./dist/adapters/express/index.d.ts",
+      "import": "./dist/adapters/express/index.js"
+    },
+    "./adapters/sveltekit": {
+      "types": "./dist/adapters/sveltekit/index.d.ts",
+      "import": "./dist/adapters/sveltekit/index.js"
+    },
+    "./adapters/nitro": {
+      "types": "./dist/adapters/nitro/index.d.ts",
+      "import": "./dist/adapters/nitro/index.js"
+    },
+    "./storage/memory": {
+      "types": "./dist/storage/memory/index.d.ts",
+      "import": "./dist/storage/memory/index.js"
+    },
+    "./storage/redis": {
+      "types": "./dist/storage/redis/index.d.ts",
+      "import": "./dist/storage/redis/index.js"
+    },
+    "./storage/kv": {
+      "types": "./dist/storage/kv/index.d.ts",
+      "import": "./dist/storage/kv/index.js"
+    },
+    "./storage/durable-objects": {
+      "types": "./dist/storage/durable-objects/index.d.ts",
+      "import": "./dist/storage/durable-objects/index.js"
+    },
+    "./storage/postgres": {
+      "types": "./dist/storage/postgres/index.d.ts",
+      "import": "./dist/storage/postgres/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    },
+    "./testing/fixtures": {
+      "types": "./dist/testing/fixtures/index.d.ts",
+      "import": "./dist/testing/fixtures/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "webhooks": ["./dist/webhooks/index.d.ts"],
+      "events": ["./dist/events/index.d.ts"],
+      "state-machine": ["./dist/state-machine/index.d.ts"],
+      "plans": ["./dist/plans/index.d.ts"],
+      "idempotency": ["./dist/idempotency/index.d.ts"],
+      "errors": ["./dist/errors/index.d.ts"],
+      "adapters/next": ["./dist/adapters/next/index.d.ts"],
+      "adapters/hono": ["./dist/adapters/hono/index.d.ts"],
+      "adapters/fastify": ["./dist/adapters/fastify/index.d.ts"],
+      "adapters/express": ["./dist/adapters/express/index.d.ts"],
+      "adapters/sveltekit": ["./dist/adapters/sveltekit/index.d.ts"],
+      "adapters/nitro": ["./dist/adapters/nitro/index.d.ts"],
+      "storage/memory": ["./dist/storage/memory/index.d.ts"],
+      "storage/redis": ["./dist/storage/redis/index.d.ts"],
+      "storage/kv": ["./dist/storage/kv/index.d.ts"],
+      "storage/durable-objects": ["./dist/storage/durable-objects/index.d.ts"],
+      "storage/postgres": ["./dist/storage/postgres/index.d.ts"],
+      "testing": ["./dist/testing/index.d.ts"],
+      "testing/fixtures": ["./dist/testing/fixtures/index.d.ts"]
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome check src tests",
+    "format": "biome format --write src tests",
+    "attw": "attw --pack .",
+    "publint": "publint",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test && pnpm run attw && pnpm run publint",
+    "changeset": "changeset",
+    "release": "changeset publish"
+  },
+  "peerDependencies": {
+    "stripe": ">=15.0.0",
+    "zod": ">=3.22.0 || >=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.10",
+    "@edge-runtime/vm": "^4.0.4",
+    "@types/node": "^20.11.30",
+    "@vitest/coverage-v8": "^2.1.5",
+    "publint": "^0.2.12",
+    "stripe": "^15.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.4.5",
+    "vitest": "^2.1.5",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "packageManager": "pnpm@9.12.0"
+}
