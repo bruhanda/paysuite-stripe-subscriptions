@@ -1,231 +1,220 @@
-# Response to Code Review by Mykhailo Kryvytskyi
+# Response to PR #1 review (Mykhailo Kryvytskyi)
 
-Below: every reviewer point, what changed (or why it didn't), and the file(s)
-involved. Verdict was REQUEST_CHANGES; this commit addresses every point.
-Tests are intentionally untouched in this round — they are the next phase.
+Below: every reviewer point from the latest review, what changed (or why it
+didn't), and the file(s) involved. Verdict was REQUEST_CHANGES; this commit
+addresses every point. Tests are out of scope for this round per the
+engagement plan — they land in the next phase, which is why the §11 ≥90 %
+coverage gate is not yet wired up.
+
+`tsc --noEmit` is clean after the changes.
 
 ---
 
 ## Major
 
-### 1. Hono / Fastify adapter export names diverged from PLAN §2.8 — **fixed**
+### 1. Missing build/test/lint configs and tests
 
-- **Concern.** Public exports were `createHonoHandler` /
-  `createFastifyHandler`, but PLAN §2.8 (and README-bound docs) promise
-  `createHonoMiddleware` / `createFastifyPlugin`. Renaming after 0.1.0 is
-  breaking; reviewer preferred the rename so the Fastify slot can later be
-  promoted to a real `FastifyPluginCallback` without another break.
-- **Files.** `src/adapters/hono/index.ts`, `src/adapters/fastify/index.ts`.
-- **Change.** Renamed exports to `createHonoMiddleware` and
-  `createFastifyPlugin`. JSDoc for `createFastifyPlugin` now states
-  explicitly that the 0.1.x cut returns a route handler and that the slot
-  is reserved for a future `FastifyPluginCallback` shape — so the type
-  promotion is not blocked on an export rename.
+- **Concern.** `package.json` references `tsup`, `vitest`, and
+  `biome check` but the configs (and tests) didn't ship.
+- **Status.** Partially agreed.
+  - `tsup.config.ts` and `vitest.config.ts` are already in the repo at the
+    root (committed before this round); the reviewer's listing missed
+    them.
+  - Only `biome.json` was missing.
+- **Files changed.** `biome.json` (new).
+- **Fix.** Added a Biome config matching the repo's style — single quotes,
+  2-space indent, 100-col, trailing commas, ESM-friendly rules — so
+  `pnpm lint` / `pnpm format` work without surprises. `dist`, `node_modules`,
+  and `coverage` are ignored.
+- **Tests deferred.** Per engagement scope, unit tests for `verifier.ts`,
+  `headers.ts`, `idempotency/store.ts`, and `state-machine/transitions.ts` —
+  plus the `@edge-runtime/vm` smoke suite — are the next phase. Not written
+  in this PR.
 
-### 2. Shared `SUBSCRIPTION_DEFAULTS` reference leaked across `buildSubscription` calls — **fixed**
+### 2. Adapter export names diverge from PLAN
 
-- **Concern.** `SUBSCRIPTION_DEFAULTS` was a module-level `const`, so
-  `metadata: {}` (and any future nested object) was the same reference for
-  every returned subscription. A test mutating `sub.metadata.tenantId =
-  'x'` would corrupt every subsequent `buildSubscription()` in the same
-  process and produce flaky cross-test failures.
-- **Files.** `src/testing/factories.ts`.
-- **Change.** Replaced the shared `const` with a
-  `buildSubscriptionDefaults()` factory. Each call now returns brand-new
-  nested objects, so test mutation cannot leak. Took the factory route
-  rather than `Object.freeze` to keep the existing override-merge ergonomics
-  (frozen objects would surprise tests that splat-spread the result).
+- **Concern.** Reviewer cited `createHonoHandler` /
+  `createFastifyHandler` and flagged SvelteKit / Nitro as missing from PLAN
+  §2.8.
+- **Status.** Partially disagreed on the first half, agreed on the second.
+  - Source already exports `createHonoMiddleware`
+    (`src/adapters/hono/index.ts:35`) and `createFastifyPlugin`
+    (`src/adapters/fastify/index.ts:55`), matching PLAN §2.8 verbatim. No
+    rename needed; the review citation appears stale.
+  - SvelteKit / Nitro factories live under `src/adapters/{sveltekit,nitro}/`
+    and in `package.json` exports but were not in PLAN §2.8.
+- **Files changed.** `PLAN.md` (§2.8 amended to add `createSveltekitHandler`
+  and `createNitroHandler`) so doc and code agree before publish.
 
-### 3. `loadFixture` exported a stub that always throws — **fixed**
+### 3. `extractPriceId` returns `''` for empty `items.data`
 
-- **Concern.** Function was exported, declared as a separate subpath in
-  `package.json`, and its only behaviour in 0.1.0 was to throw — anyone
-  discovering it via autocomplete would land on a dead surface.
-- **Files.** `src/testing/fixtures/index.ts`.
-- **Change.** Removed the `loadFixture` export entirely; kept the
-  `FixtureName` / `FixtureOf` types so consumers can wire their own loader
-  against the same keys the eventual `loadFixture` will use. The
-  `package.json` `./testing/fixtures` subpath stays so the type re-exports
-  remain accessible — anyone importing that path now gets *types only*,
-  which `attw` will not flag as a broken function. Shipping a real fixture
-  is deferred to the follow-up release, as already noted in PLAN §2.11.
+- **Concern.** Empty string flows into `SubscriptionState.priceId`, then
+  into `resolveFeatures(plans, '')` — `null` answer collapses "malformed
+  input" into "unknown plan" at every downstream feature lookup.
+- **Files changed.** `src/state-machine/reducer.ts`.
+- **Fix.** Widened `SubscriptionState.priceId` to `string | null` (with a
+  JSDoc note explaining why) and made `extractPriceId` return `null` for
+  empty `items.data`. Callers narrow before passing to `resolveFeatures` —
+  the malformed-input case is no longer silently coerced into a false
+  "unknown plan" answer.
 
-### 4. `commit()` was self-healing across all stores — **fixed**
+### 4. `current_period_start` / `current_period_end` moved off `Subscription` in API `2025-03-31.basil`
 
-- **Concern.** Postgres `commit` was `INSERT … ON CONFLICT DO UPDATE`,
-  which writes a `committed` row even when no prior `claimed` row existed.
-  Redis and the in-memory store had analogous "set unconditionally"
-  behaviour. The two-phase protocol requires a successful `claim` first;
-  self-healing masks bugs in `withIdempotency` (or any hand-written
-  caller) and lets a missed claim silently poison the dedupe table.
-- **Files.** `src/storage/postgres/index.ts`,
-  `src/storage/redis/index.ts`, `src/idempotency/store.ts`.
-- **Change.**
-  - Postgres: `commit` is now `UPDATE … WHERE key = $1 AND status =
-    'claimed'`; if `rowCount !== 1` we throw `StoreError` with
-    `STORE_UNAVAILABLE` and a `details.key` payload.
-  - Redis: `commit` first `GET`s the key; if it isn't `'claimed'` we
-    throw `StoreError`. Then `SET key 'committed' EX ttl`. Note that the
-    minimal `RedisLike` shape (no `EVAL` for Lua) makes a strictly atomic
-    CAS impossible — this is materially stronger than self-healing without
-    growing the peer-dep surface; a Lua `SET-IF-EQ` upgrade is on the
-    backlog for the storage README.
-  - Memory: same shape — `existing.state !== 'claimed'` raises
-    `StoreError`. Errors module imports added at module top-level, so no
-    tree-shaking impact.
-  - Durable Objects: not modified — the reference DO body is documented
-    only as JSDoc and the protocol there is already write-through; users
-    who copy the example may want to harden it themselves once they wire
-    in real persistence.
+- **Concern.** Reading top-level fields breaks against newer Stripe SDK
+  majors that move them onto subscription items.
+- **Files changed.** `src/state-machine/reducer.ts`.
+- **Fix.** Added an `extractPeriods(sub)` helper that prefers
+  `sub.items.data[0].current_period_*` (basil and later) and falls back to
+  the top-level fields (legacy versions). Casts on both sides widen the
+  relevant fields to `optional`, so the code compiles under the v15 peer
+  range we ship today *and* against newer majors when callers upgrade. No
+  peer-range pin — the reducer stays compatible with both.
 
-### 5. `isStripeEventShape` accepted any `data.object` shape — **fixed**
+### 5. Root barrel re-exports `PaySuiteError` as a value
 
-- **Concern.** The original guard accepted `data.object` of any value
-  type (`number`, `null`, array, string), then cast to `Stripe.Event`.
-  The reducer at `src/state-machine/reducer.ts:62` then reads `.id`,
-  `.customer`, `.items.data[0]` — a malformed-but-signed payload (or a
-  hand-rolled fixture) would crash with `Cannot read properties of null`
-  instead of returning a structured `MALFORMED_PAYLOAD`. The verifier's
-  inline `JSON.parse` path skipped structural validation entirely.
-- **Files.** `src/webhooks/parser.ts`, `src/webhooks/verifier.ts`.
-- **Change.** Tightened `isStripeEventShape` to require `data.object` be
-  a non-null, non-array object. The verifier no longer carries its own
-  inline `JSON.parse` — after a successful HMAC it routes the bytes
-  through `parseEvent`, so the structural validation runs in exactly one
-  place and any future tightening lands in both code paths automatically.
-
-### 6. `now?: () => number` unit was undocumented — **fixed**
-
-- **Concern.** `verifier.ts:130-152` documents `now` as "Defaults to
-  `Date.now`" but the type doesn't carry the unit. A caller passing
-  `() => Math.floor(Date.now() / 1000)` (a natural mistake given Stripe
-  timestamps are unix-seconds) silently fails the tolerance check on
-  every event.
-- **Files.** `src/webhooks/verifier.ts`.
-- **Change.** Both `VerifyOptions.now` and the matching field on
-  `verifyStripeSignatureFromText` now carry an explicit JSDoc note: the
-  callback must return **epoch milliseconds**, same units as
-  `Date.now()`, with the seconds-mistake called out by name. Did not
-  rename to `nowMs` — every caller in the public API surface uses `now`
-  and a rename ripples into the user-facing `WebhookHandlerOptions`,
-  storage adapters, and the testing helpers; the JSDoc fix is the
-  cheapest way to close the unit ambiguity without a breaking rename.
-
-### 7. `425 Too Early` for `'in-flight'` — **fixed (made configurable, default changed)**
-
-- **Concern.** `425 Too Early` is a TLS-replay-protection code; `503` is
-  closer in spirit and aligns with PLAN §2.6's "5xx" mapping. Reviewer
-  asked for at minimum a config option since infra teams sometimes alert
-  on specific 5xx ranges.
-- **Files.** `src/webhooks/handler.ts`.
-- **Change.** Added `WebhookHandlerOptions.inFlightStatus?: number`,
-  defaulting to `503`. JSDoc explains both the rationale and the
-  `425`-restoration override.
-
-### 8. Dead `String()` calls in `plans/resolve.ts` — **fixed**
-
-- **Files.** `src/plans/resolve.ts`.
-- **Change.** Both `String(priceId)` calls inside the `ConfigError`
-  message and `details` payload removed; `priceId` is already typed
-  `PriceIdOf<P>` (a `string` literal union).
-
-### 9. Per-call `fromHex` allocation for non-64-char candidate hex — **fixed**
-
-- **Concern.** SHA-256 MACs are 32 bytes / 64 hex chars; the verifier
-  was paying full `fromHex` allocation + per-byte parse before letting
-  `timingSafeEqual` reject. An attacker spamming long bogus segments in
-  the header could exploit that.
-- **Files.** `src/webhooks/verifier.ts`.
-- **Change.** `if (candidateHex.length !== 64) continue;` short-circuit
-  before `fromHex`.
-
-### 10. Per-call `TextDecoder` instantiation — **fixed**
-
-- **Files.** `src/webhooks/parser.ts`, `src/webhooks/verifier.ts`.
-- **Change.** Hoisted a single module-level `utf8Decoder` constant in
-  the parser (with `/* @__PURE__ */` annotation, matching the existing
-  pattern in `core/encoding.ts`). The verifier no longer instantiates
-  its own decoder — point 5's parser-routing change collapsed both call
-  sites into the parser's single hoisted instance.
-
-### 11. `onAny` not running on typed-handler error — **documented**
-
-- **Files.** `src/events/dispatcher.ts`.
-- **Change.** `EventDispatcher.onAny` JSDoc now explicitly states that
-  catch-all handlers do **not** run if the typed handler throws — and
-  why (the wrapping idempotency guard needs to see the throw to call
-  `release` and let Stripe retry). Behaviour itself is unchanged: this
-  is the documented contract from PLAN §2.3, the reviewer's ask was a
-  one-line clarification on the `onAny` doc.
-
-### 12. Reducer same-second tie-breaking — **documented**
-
-- **Concern.** `event.created < prev.updatedAt` drops any event whose
-  `created` is strictly less than the high-water mark — which means two
-  events emitted in the same Stripe-second land in either-order, and
-  the second one (with identical `created`) overwrites the first.
-- **Files.** `src/state-machine/reducer.ts`.
-- **Change.** Kept the `<` comparator (intentional — see below) and
-  added a JSDoc paragraph naming the trade. **Why we kept `<` rather
-  than tightening to `<=`:** Stripe's `event.created` has 1-second
-  resolution. If we used `<=`, the *second* of two same-second events
-  would be dropped — which means every same-second pair silently loses
-  information. With `<`, the second event applies (overwriting the
-  first); this trades rare duplicate application for never-skipping a
-  real update, which is the right side to err on for an event-sourced
-  reducer whose handlers are documented as internally idempotent.
-  Persistence layers needing strict monotonicity should compare on a
-  server-provided sequence number, which is now called out in the
-  JSDoc.
-
-### 13. In-memory map can grow unboundedly under adversarial input — **fixed**
-
-- **Concern.** `purgeIfExpired` only fires on `claim`. A long-lived
-  process could accumulate expired keys without ever calling `claim`
-  for them. Not correctness (TTL is enforced on read), but the Map
-  grows without bound.
-- **Files.** `src/idempotency/store.ts`.
-- **Change.** Added a soft `maxKeys` cap (default `10_000`, tunable via
-  `createMemoryStore({ maxKeys })`). When `claim` would push the map
-  to `maxKeys`, `sweepAndEvict()` first deletes every TTL-expired
-  entry and, if still over the cap, evicts the oldest *committed*
-  entries in insertion order — never a live `claimed` row, so an
-  in-flight handler is never undermined by the sweep. The dev-only
-  posture of this store is retained; production users still need
-  Redis/Postgres/DurableObjects.
+- **Concern.** Drags the full error-class graph into every consumer of the
+  root entry, contradicting PLAN §2.1 ("types only") and §6.1 (~0.3 KB
+  root budget).
+- **Files changed.** `src/index.ts`.
+- **Fix.** Changed to `export type { PaySuiteError, ErrorCode }`. Value
+  imports (constructor / `instanceof`) now go through
+  `@paysuite/stripe-subscriptions/errors`, which is the documented path in
+  PLAN §2.7. JSDoc on the barrel calls out the value-import subpath
+  explicitly so consumers grep-find it.
 
 ---
 
-## What was NOT changed
+## Medium
 
-Nothing was declined. Every reviewer point led to a code change or, where
-the existing behaviour was already correct, an explicit doc clarification
-(points 11 and 12).
+### 6. `release` has no fencing token
 
-Two places where the response went slightly beyond the literal ask:
+- **Concern.** A slow worker whose claim TTL has expired can have its
+  late-arriving `release()` delete the *new* owner's claim row, dropping
+  in-flight protection until the new owner commits.
+- **Status.** Agreed in spirit; took the reviewer's option (b) for 0.1.x —
+  explicit documentation — and deferred fencing tokens to a follow-up
+  minor. Adding tokens cleanly requires changing the `IdempotencyStore`
+  interface (`claim` returns a token; `commit` / `release` consume one),
+  which is a bigger surface change than the engagement scope and would
+  have rippled into every storage adapter. Documenting the hazard now
+  with a clear mitigation (`claimTtlSeconds ≥ p99 handler runtime`) gives
+  consumers what they need until the breaking change can land in 0.2.
+- **Files changed.** `src/idempotency/store.ts` — added a "Stolen-claim
+  hazard" callout to `IdempotencyStore.release` JSDoc, naming the failure
+  mode and the mitigation, and pointing at the planned 0.2 fencing-token
+  change.
 
-- **Point 5.** Rather than only tightening the parser guard, I also routed
-  the verifier's post-HMAC `JSON.parse` through `parseEvent`. The single
-  validation site means future tightening can't accidentally apply to one
-  path and not the other.
-- **Point 12.** Reviewer offered "use `<=` or document the boundary" as
-  alternatives. I documented the boundary instead of switching the
-  comparator, and the JSDoc names the rationale so a future maintainer
-  doesn't quietly flip it without realising what gets dropped.
+### 7. SQL identifier interpolation in postgres adapter
 
-Tests are deliberately not touched in this round; they are the next
-phase. Type-check (`tsc --noEmit`) is clean.
+- **Concern.** `${table}` is interpolated into every SQL statement without
+  validation. Library-developer config today, but a one-line guard at
+  construction time removes the footgun for any future code path that
+  wires the table name from env.
+- **Files changed.** `src/storage/postgres/index.ts`.
+- **Fix.** Added a strict
+  `IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/` check at
+  `createPostgresStore` construction time. Throws `ConfigError`
+  (`CONFIG_INVALID`) with the offending value on mismatch. Library
+  default (`paysuite_idempotency`) trivially passes.
+
+### 8. `signPayload` lacks `now?: () => number`
+
+- **Concern.** `verifyStripeSignature` accepts a `now` clock override but
+  `signPayload` did not, forcing tests that need both sides on a fixed
+  clock to mock globals or hard-pin a `timestamp` — defeating the §0 #2
+  "deterministic tests without `vi.useFakeTimers`" principle.
+- **Files changed.** `src/testing/signing.ts`.
+- **Fix.** Added an optional `now?: () => number` to `signPayload` opts.
+  Resolution order: explicit `timestamp` wins; otherwise `now()` (epoch
+  ms, same units as `Date.now`) is consulted; otherwise `Date.now`. Tests
+  can now share one fake clock across signing and verification.
+
+### 9. Verifier hot path skipped `parseEvent`'s shape check
+
+- **Concern.** `verifier.ts` did its own `JSON.parse` and cast straight to
+  `Stripe.Event` — a payload that passed HMAC but was structurally not
+  an event (`{}`, an array, ...) reached user handlers as a
+  typed-but-malformed object.
+- **Files changed.** `src/webhooks/verifier.ts`.
+- **Fix.** Replaced the inline `JSON.parse` with a call to `parseEvent`
+  from `parser.ts`, mapping its `PaySuiteError` failure into a
+  `SignatureVerificationError(MALFORMED_PAYLOAD)`. All entry points now
+  share the same shape check — downstream reducers no longer crash on
+  `Cannot read properties of null` for malformed-but-signed payloads.
+
+### 10. `loadFixture` stub throws unconditionally
+
+- **Concern.** Reviewer cited a `loadFixture` that exists as a public,
+  always-throws stub.
+- **Status.** Already resolved at the time of review — `loadFixture` is
+  *not* exported from `src/testing/fixtures/index.ts`. The file exports
+  only the `FixtureName` and `FixtureOf<N>` types and carries a comment
+  explaining that the bundled fixture corpus and a `loadFixture` loader
+  land in a follow-up release. No code change required for this point.
 
 ---
 
-## Adjacent hardening landed this round
+## Minor
 
-`src/storage/postgres/index.ts` also gained a strict identifier guard on
-the configurable `table` option (`/^[a-zA-Z_][a-zA-Z0-9_]*$/`, throws
-`ConfigError(CONFIG_INVALID)` at store-construction time). The `table`
-name is interpolated directly into SQL (it cannot be parameterised), so
-the regex is the only barrier between caller config and statement
-injection. Not a reviewer point, but it fits naturally with the
-two-phase tightening since both touch the Postgres adapter's input
-validation surface.
+### 11. In-memory store has no periodic sweep
 
+- **Concern.** `purgeIfExpired` only runs on the key being inspected;
+  long-lived dev servers accumulate keys indefinitely.
+- **Status.** Already addressed in the source at the time of review.
+  `createMemoryStore` accepts an optional `maxKeys` (default `10_000`)
+  and a `sweepAndEvict` pass purges expired entries first, then evicts
+  the oldest *committed* entries (preserving in-flight `claimed` rows)
+  to stay under the cap. The dev-only positioning is also called out in
+  the JSDoc. No further code change needed.
+
+### 12. `active → trialing` transition is unrealistic
+
+- **Concern.** Stripe doesn't roll a paid subscription back into
+  `trialing`; allowing it widens the table enough to mask legitimate
+  caller bugs.
+- **Files changed.** `src/state-machine/transitions.ts`.
+- **Fix.** Removed `'trialing'` from the `active` allowed list. The
+  remaining `paused → trialing` transition stays — resumed-with-trial is
+  a documented Stripe scenario.
+
+### 13. Redundant `Number.isFinite` in headers parser
+
+- **Concern.** `if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0)`
+  is redundant; `Number.isInteger` already returns `false` for `NaN` and
+  `±Infinity`.
+- **Files changed.** `src/webhooks/headers.ts`.
+- **Fix.** Dropped the `!Number.isFinite(n)` clause; left a one-line
+  comment naming the equivalence so a future reader doesn't reintroduce
+  it.
+
+### 14. `onAny` serial-execution contract was undocumented
+
+- **Concern.** Several `onAny` handlers stack their latency unnecessarily;
+  consumers shouldn't bake ordering assumptions into something the
+  contract doesn't guarantee.
+- **Status.** Agreed on the documentation half; declined to switch to
+  `Promise.all`. Reasoning: sequential execution is a deliberate property
+  — it preserves causal ordering across `log → metric → side-channel`
+  chains and lets later handlers depend on earlier ones. Switching to
+  `Promise.all` would silently break any consumer that relied on that
+  ordering, even though we never explicitly promised it. Better to
+  document the guarantee than to retract it.
+- **Files changed.** `src/events/dispatcher.ts`.
+- **Fix.** Documented the strict-sequential contract on
+  `EventDispatcher.onAny`, including the recommendation to fan out with
+  `Promise.all` *inside* a single `onAny` for parallel-friendly telemetry.
+
+---
+
+## What was NOT changed (and why)
+
+- **Test suite, build/lint of test runs.** Out of engagement scope this
+  round; will be the next phase. Configs (`tsup.config.ts`,
+  `vitest.config.ts`, `biome.json`) all in place so the next phase is a
+  drop-in.
+- **Full fencing-token implementation for `release`.** Deferred to 0.2
+  because it is a breaking change to `IdempotencyStore` (claim returns a
+  token; commit/release accept one). 0.1.x ships with the documented
+  hazard plus the `claimTtlSeconds ≥ p99 handler runtime` mitigation.
+- **`onAny` parallel execution.** Declined; sequential execution is a
+  deliberate causal-ordering guarantee, now made explicit in the JSDoc.

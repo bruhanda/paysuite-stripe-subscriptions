@@ -39,6 +39,15 @@ export interface EventDispatcher<Registered extends StripeEventName = never> {
    * after any matching typed handler has run. Multiple `onAny` handlers
    * compose in registration order.
    *
+   * **Execution contract.** All handlers — the typed handler (if any) and
+   * every `onAny` — run *strictly sequentially* in registration order;
+   * each is `await`ed before the next starts. This is intentional:
+   * sequential execution preserves causal ordering (e.g. log-then-metric)
+   * and lets later handlers depend on side-effects of earlier ones. If
+   * you need parallel-friendly observability, fan out from inside a
+   * single `onAny` with `Promise.all`. Do NOT bake assumptions about
+   * wall-clock concurrency into your handlers.
+   *
    * NOTE: `onAny` handlers do **not** run if the typed handler throws —
    * dispatch propagates the typed-handler error directly to the caller so
    * the wrapping idempotency guard can `release` and Stripe can retry.
