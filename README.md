@@ -65,6 +65,21 @@ export const { POST } = createNextRouteHandler({
 });
 ```
 
+## Examples
+
+Three runnable examples live under [`examples/`](./examples). Each one is also packaged
+as a self-contained StackBlitz sandbox under [`examples/sandbox/`](./examples/sandbox)
+with its own `package.json` — click the badge to open the project in your browser.
+
+| Example | Run locally | Sandbox |
+|---|---|---|
+| [`basic-usage.ts`](./examples/basic-usage.ts) — minimum end-to-end webhook flow | `npx tsx examples/basic-usage.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/basic-usage) |
+| [`advanced-usage.ts`](./examples/advanced-usage.ts) — plans, reducer, transition router, idempotency | `npx tsx examples/advanced-usage.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/advanced-usage) |
+| [`with-hono.ts`](./examples/with-hono.ts) — `createHonoMiddleware` driven via `app.fetch` | `npx tsx examples/with-hono.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/with-hono) |
+
+The local scripts produce signed payloads with the testing utilities, so you can run
+every example end-to-end without touching `stripe listen` or a real Stripe account.
+
 ## Installation
 
 ```bash
