@@ -48,6 +48,14 @@ interface IdempotencyStore {
      * retryable handler failure so the next Stripe retry can immediately
      * re-claim instead of waiting for TTL expiry.
      *
+     * **Stolen-claim hazard.** This 0.1.x protocol does NOT carry a fencing
+     * token. If a worker's claim TTL expires while it is still running, a
+     * second worker may steal the claim — a subsequent `release` from the
+     * original worker will then delete the new owner's marker, briefly
+     * dropping in-flight protection until the second worker calls `commit`.
+     * Bound the window by setting `claimTtlSeconds` ≥ p99 handler runtime.
+     * A future minor will add explicit fencing tokens to close the gap.
+     *
      * @param key - The de-duplication key.
      */
     release(key: string): Promise<void>;
@@ -65,7 +73,15 @@ interface IdempotencyStore {
  * production. Replace with `redis`, `postgres`, `durable-objects`, or `kv`
  * before deploying.
  *
+ * The internal map is bounded: when it reaches `maxKeys`, every subsequent
+ * `claim` triggers a sweep of all keys whose TTL has expired. If, after the
+ * sweep, the map is still at or above `maxKeys`, the oldest committed
+ * entries are evicted in insertion order to make room. This protects
+ * long-lived dev servers from unbounded growth under adversarial input
+ * without changing the correctness of the read-side TTL check.
+ *
  * @param opts.now - Override the clock (defaults to `Date.now`).
+ * @param opts.maxKeys - Soft cap on the map size; defaults to 10_000.
  * @returns A fresh in-memory store instance.
  *
  * @example
@@ -77,6 +93,7 @@ interface IdempotencyStore {
  */
 declare function createMemoryStore(opts?: {
     now?: () => number;
+    maxKeys?: number;
 }): IdempotencyStore;
 
 export { type ClaimState, type IdempotencyStore, createMemoryStore };

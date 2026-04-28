@@ -833,6 +833,22 @@ otherwise rebuilds by hand. For end-to-end SaaS boilerplates with UI scaffolding
 project structure for a one-time licence fee; this library drops into whatever stack
 you already run, and stays a library.
 
+## Examples
+
+Three runnable examples live under [`examples/`](./examples). Each one is fully
+self-contained — payloads are synthesized and signed with the library's own testing
+utilities, so no Stripe account or `stripe listen` is required.
+
+| Example | What it shows | Run | StackBlitz |
+|---|---|---|---|
+| [`basic-usage.ts`](./examples/basic-usage.ts) | Minimum end-to-end webhook flow: typed dispatcher + `createWebhookHandler` + signed delivery + replay → dedupe. | `npx tsx examples/basic-usage.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/basic-usage) |
+| [`advanced-usage.ts`](./examples/advanced-usage.ts) | Production-shaped pipeline: `definePlans` + reducer + transition router + `withIdempotency` + structured `PaySuiteError` handling. | `npx tsx examples/advanced-usage.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/advanced-usage) |
+| [`with-hono.ts`](./examples/with-hono.ts) | `createHonoMiddleware` on a Hono route, exercised via `app.fetch(Request)` with a `createSpyStore` to verify the claim/commit call log. | `npx tsx examples/with-hono.ts` | [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/bruhanda/paysuite-stripe-subscriptions/tree/main/examples/sandbox/with-hono) |
+
+The `examples/sandbox/` directory contains a self-contained npm package per example,
+suitable for opening directly in [StackBlitz](https://stackblitz.com) — useful when
+you want to fork an example into a new project without cloning the whole repo.
+
 ## Compatibility
 
 - **Node.js** 18+

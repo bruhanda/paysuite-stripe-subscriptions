@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { S as StripeEventName, a as StripeEventOf } from '../types-CZB0aC31.js';
-import { W as WebhookSecret } from '../verifier-aT3XGMEv.js';
+import { W as WebhookSecret } from '../verifier-BhjJeIJP.js';
 import { IdempotencyStore } from '../storage/memory/index.js';
 import '../errors/index.js';
 import '../base-D1ly21Is.js';
@@ -47,9 +47,15 @@ declare function buildEvent<N extends StripeEventName>(type: N, object: StripeEv
  * exactly, so a header from this function is interchangeable with the
  * real thing for the corresponding payload + secret.
  *
+ * Accepts the same `now` clock override as
+ * {@link verifyStripeSignature}, so both sides of a test can share a
+ * single fake clock without touching `vi.useFakeTimers()` or globals.
+ *
  * @param opts.secret    - The webhook signing secret to use.
  * @param opts.payload   - The body to sign, as bytes or a string (UTF-8 encoded).
- * @param opts.timestamp - Optional fixed timestamp (unix seconds). Defaults to `now`.
+ * @param opts.timestamp - Optional fixed timestamp (unix seconds). Wins over `now`.
+ * @param opts.now       - Optional clock override returning epoch milliseconds.
+ *                          Used only when `timestamp` is not provided.
  * @returns A header value of the form `t=<unix>,v1=<hex-mac>`.
  *
  * @example
@@ -65,6 +71,7 @@ declare function signPayload(opts: {
     secret: WebhookSecret;
     payload: string | Uint8Array;
     timestamp?: number;
+    now?: () => number;
 }): Promise<string>;
 
 /** A single recorded interaction with a {@link createSpyStore}. */

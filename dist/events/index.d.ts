@@ -1,5 +1,5 @@
 export { S as StripeEventName, a as StripeEventOf } from '../types-CZB0aC31.js';
-export { E as EventDispatcher, S as SealedDispatcher, c as createDispatcher } from '../dispatcher-BtZKTYtS.js';
+export { E as EventDispatcher, S as SealedDispatcher, c as createDispatcher } from '../dispatcher-CzqR098A.js';
 import Stripe from 'stripe';
 
 /**

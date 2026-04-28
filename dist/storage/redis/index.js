@@ -82,6 +82,23 @@ function createRedisStore(client) {
       return "in-flight";
     },
     async commit(key, { commitTtlSeconds }) {
+      let existing;
+      try {
+        existing = await client.get(key);
+      } catch (cause) {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message: "Redis GET failed during commit.",
+          cause
+        });
+      }
+      if (existing !== CLAIMED) {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message: "Redis commit found no claimed key \u2014 the two-phase protocol requires claim() before commit().",
+          details: { key, observed: existing }
+        });
+      }
       try {
         await client.set(key, COMMITTED, "EX", commitTtlSeconds);
       } catch (cause) {

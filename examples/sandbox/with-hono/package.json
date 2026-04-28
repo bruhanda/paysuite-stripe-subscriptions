@@ -1,0 +1,22 @@
+{
+  "name": "paysuite-stripe-subscriptions-with-hono",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@paysuite/stripe-subscriptions": "^0.1.0",
+    "hono": "^4.6.0",
+    "stripe": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.5"
+  },
+  "stackblitz": {
+    "startCommand": "npm start"
+  }
+}

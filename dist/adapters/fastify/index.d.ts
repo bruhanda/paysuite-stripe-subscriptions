@@ -1,9 +1,9 @@
 import { S as StripeEventName } from '../../types-CZB0aC31.js';
-import { W as WebhookHandlerOptions } from '../../handler-D5-J7n_B.js';
+import { W as WebhookHandlerOptions } from '../../handler-zx3YgSii.js';
 import 'stripe';
-import '../../dispatcher-BtZKTYtS.js';
+import '../../dispatcher-CzqR098A.js';
 import '../../storage/memory/index.js';
-import '../../verifier-aT3XGMEv.js';
+import '../../verifier-BhjJeIJP.js';
 import '../../errors/index.js';
 import '../../base-D1ly21Is.js';
 
@@ -28,13 +28,18 @@ interface FastifyReplyLike {
  * handler. Your Fastify instance must be configured to deliver the raw
  * body — see the example.
  *
+ * Named `createFastifyPlugin` to reserve the export slot promised by the
+ * library's public API surface; the 0.1.x cut returns a route handler so
+ * the function can be promoted to a full `FastifyPluginCallback` later
+ * without renaming the export.
+ *
  * @param opts - The standard {@link WebhookHandlerOptions}.
  * @returns An async `(req, reply) => Promise<void>` handler.
  *
  * @example
  * ```ts
  * import Fastify from 'fastify';
- * import { createFastifyHandler } from '@paysuite/stripe-subscriptions/adapters/fastify';
+ * import { createFastifyPlugin } from '@paysuite/stripe-subscriptions/adapters/fastify';
  *
  * const app = Fastify();
  * app.addContentTypeParser(
@@ -42,12 +47,12 @@ interface FastifyReplyLike {
  *   { parseAs: 'buffer' },
  *   (_req, body, done) => done(null, body),
  * );
- * app.post('/stripe/webhooks', createFastifyHandler({
+ * app.post('/stripe/webhooks', createFastifyPlugin({
  *   secret: process.env.STRIPE_WEBHOOK_SECRET as `whsec_${string}`,
  *   dispatcher,
  * }));
  * ```
  */
-declare function createFastifyHandler<E extends StripeEventName = StripeEventName>(opts: WebhookHandlerOptions<E>): (req: FastifyRequestLike, reply: FastifyReplyLike) => Promise<void>;
+declare function createFastifyPlugin<E extends StripeEventName = StripeEventName>(opts: WebhookHandlerOptions<E>): (req: FastifyRequestLike, reply: FastifyReplyLike) => Promise<void>;
 
-export { type FastifyReplyLike, type FastifyRequestLike, createFastifyHandler };
+export { type FastifyReplyLike, type FastifyRequestLike, createFastifyPlugin };

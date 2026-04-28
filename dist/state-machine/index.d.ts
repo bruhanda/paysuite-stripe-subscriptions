@@ -62,8 +62,13 @@ interface SubscriptionState {
     customerId: string;
     /** Current Stripe status — see {@link SubscriptionStatus}. */
     status: SubscriptionStatus;
-    /** Active price id; for multi-item subscriptions, the *first* item's price. */
-    priceId: string;
+    /**
+     * Active price id; for multi-item subscriptions, the *first* item's price.
+     * `null` when the subscription has no items (a malformed input we surface
+     * rather than masking with an empty string — feature lookups against `''`
+     * would otherwise silently treat the price as "unknown plan").
+     */
+    priceId: string | null;
     /** Unix-seconds of the current period start. */
     currentPeriodStart: number;
     /** Unix-seconds of the current period end. */
@@ -82,6 +87,14 @@ type ReducibleSubscriptionEvent = StripeEventOf<'customer.subscription.created' 
  * from the previous state (or `null` on first-seen) and a Stripe event.
  * Drops out-of-order events (where `event.created < prev.updatedAt`) so
  * that Stripe's unordered delivery cannot regress local state.
+ *
+ * Same-second tie-breaking: Stripe's `event.created` has 1-second
+ * resolution, so two genuinely-distinct events emitted in the same second
+ * can arrive in either order. The reducer treats `event.created ===
+ * prev.updatedAt` as "apply" (the second event in the same second wins),
+ * trading rare duplicate application for never-skipping a real update.
+ * Persistence layers that need stricter monotonicity should compare on a
+ * server-provided sequence number instead.
  *
  * Named `reduceSubscription` to avoid auto-import collisions with
  * `Array.prototype.reduce` and Redux conventions.

@@ -73,8 +73,8 @@ function hasFeature(plans, priceId, feature) {
   if (features === null) {
     throw new ConfigError({
       code: ErrorCodes.UNKNOWN_PRICE_ID,
-      message: `Unknown price id: ${String(priceId)}`,
-      details: { priceId: String(priceId) }
+      message: `Unknown price id: ${priceId}`,
+      details: { priceId }
     });
   }
   return features.includes(feature);

@@ -72,7 +72,7 @@ var TRANSITIONS = {
   incomplete: ["active", "trialing", "incomplete_expired", "canceled"],
   incomplete_expired: [],
   trialing: ["active", "past_due", "canceled", "unpaid", "paused", "incomplete_expired"],
-  active: ["past_due", "canceled", "unpaid", "paused", "trialing"],
+  active: ["past_due", "canceled", "unpaid", "paused"],
   past_due: ["active", "canceled", "unpaid"],
   canceled: [],
   unpaid: ["active", "canceled", "past_due"],
@@ -98,6 +98,7 @@ function reduceSubscription(prev, event) {
   if (prev !== null && event.created < prev.updatedAt) {
     return prev;
   }
+  const periods = extractPeriods(sub);
   return {
     id: sub.id,
     customerId: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
@@ -108,8 +109,8 @@ function reduceSubscription(prev, event) {
     // union will see TypeScript flag the new status when they upgrade.
     status: sub.status,
     priceId: extractPriceId(sub),
-    currentPeriodStart: sub.current_period_start,
-    currentPeriodEnd: sub.current_period_end,
+    currentPeriodStart: periods.start,
+    currentPeriodEnd: periods.end,
     cancelAtPeriodEnd: sub.cancel_at_period_end,
     trialEnd: sub.trial_end,
     updatedAt: event.created
@@ -117,8 +118,15 @@ function reduceSubscription(prev, event) {
 }
 function extractPriceId(sub) {
   const item = sub.items.data[0];
-  if (item === void 0) return "";
+  if (item === void 0) return null;
   return item.price.id;
+}
+function extractPeriods(sub) {
+  const item = sub.items.data[0];
+  const legacy = sub;
+  const start = item?.current_period_start ?? legacy.current_period_start ?? 0;
+  const end = item?.current_period_end ?? legacy.current_period_end ?? 0;
+  return { start, end };
 }
 
 // src/state-machine/transition-router.ts

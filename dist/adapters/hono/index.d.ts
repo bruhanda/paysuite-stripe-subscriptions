@@ -1,9 +1,9 @@
 import { S as StripeEventName } from '../../types-CZB0aC31.js';
-import { W as WebhookHandlerOptions } from '../../handler-D5-J7n_B.js';
+import { W as WebhookHandlerOptions } from '../../handler-zx3YgSii.js';
 import 'stripe';
-import '../../dispatcher-BtZKTYtS.js';
+import '../../dispatcher-CzqR098A.js';
 import '../../storage/memory/index.js';
-import '../../verifier-aT3XGMEv.js';
+import '../../verifier-BhjJeIJP.js';
 import '../../errors/index.js';
 import '../../base-D1ly21Is.js';
 
@@ -14,8 +14,12 @@ interface HonoContextLike {
     };
 }
 /**
- * Hono middleware/handler factory. Hono v4+ exposes the underlying Web
- * `Request` at `c.req.raw`, so this is a 3-line wrapper.
+ * Hono middleware factory. Hono v4+ exposes the underlying Web `Request` at
+ * `c.req.raw`, so this is a thin wrapper around {@link createWebhookHandler}.
+ *
+ * The returned function is shaped as a Hono `MiddlewareHandler` (it ignores
+ * `next` and always returns a `Response`, which is the canonical pattern for
+ * a terminal route handler in Hono).
  *
  * @param opts - The standard {@link WebhookHandlerOptions}.
  * @returns A handler `(c) => Promise<Response>` to mount on a Hono route.
@@ -23,15 +27,15 @@ interface HonoContextLike {
  * @example
  * ```ts
  * import { Hono } from 'hono';
- * import { createHonoHandler } from '@paysuite/stripe-subscriptions/adapters/hono';
+ * import { createHonoMiddleware } from '@paysuite/stripe-subscriptions/adapters/hono';
  *
  * const app = new Hono();
- * app.post('/stripe/webhooks', createHonoHandler({
+ * app.post('/stripe/webhooks', createHonoMiddleware({
  *   secret: process.env.STRIPE_WEBHOOK_SECRET as `whsec_${string}`,
  *   dispatcher,
  * }));
  * ```
  */
-declare function createHonoHandler<E extends StripeEventName = StripeEventName>(opts: WebhookHandlerOptions<E>): (c: HonoContextLike) => Promise<Response>;
+declare function createHonoMiddleware<E extends StripeEventName = StripeEventName>(opts: WebhookHandlerOptions<E>): (c: HonoContextLike) => Promise<Response>;
 
-export { type HonoContextLike, createHonoHandler };
+export { type HonoContextLike, createHonoMiddleware };

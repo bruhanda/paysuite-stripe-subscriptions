@@ -1,6 +1,8 @@
 // src/errors/codes.ts
 var ErrorCodes = {
-  STORE_UNAVAILABLE: "STORE_UNAVAILABLE"};
+  STORE_UNAVAILABLE: "STORE_UNAVAILABLE",
+  CONFIG_INVALID: "CONFIG_INVALID"
+};
 
 // src/errors/base.ts
 var PaySuiteError = class extends Error {
@@ -44,6 +46,12 @@ function serializeCause(cause) {
 }
 
 // src/errors/index.ts
+var ConfigError = class extends PaySuiteError {
+  constructor(opts) {
+    super(opts);
+    this.name = "ConfigError";
+  }
+};
 var StoreError = class extends PaySuiteError {
   constructor(opts) {
     super(opts);
@@ -52,9 +60,17 @@ var StoreError = class extends PaySuiteError {
 };
 
 // src/storage/postgres/index.ts
+var IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 var DEFAULT_TABLE = "paysuite_idempotency";
 function createPostgresStore(executor, opts = {}) {
   const table = opts.table ?? DEFAULT_TABLE;
+  if (!IDENTIFIER_PATTERN.test(table)) {
+    throw new ConfigError({
+      code: ErrorCodes.CONFIG_INVALID,
+      message: `Invalid Postgres table name: ${JSON.stringify(table)}. Must match /^[a-zA-Z_][a-zA-Z0-9_]*$/.`,
+      details: { table }
+    });
+  }
   return {
     async claim(key, { claimTtlSeconds }) {
       const expires = new Date(Date.now() + claimTtlSeconds * 1e3);
@@ -92,10 +108,11 @@ function createPostgresStore(executor, opts = {}) {
     },
     async commit(key, { commitTtlSeconds }) {
       const expires = new Date(Date.now() + commitTtlSeconds * 1e3);
+      let result;
       try {
-        await executor.query(
-          `INSERT INTO ${table} (key, status, expires_at) VALUES ($1, 'committed', $2)
-           ON CONFLICT (key) DO UPDATE SET status = 'committed', expires_at = EXCLUDED.expires_at`,
+        result = await executor.query(
+          `UPDATE ${table} SET status = 'committed', expires_at = $2
+           WHERE key = $1 AND status = 'claimed'`,
           [key, expires]
         );
       } catch (cause) {
@@ -103,6 +120,13 @@ function createPostgresStore(executor, opts = {}) {
           code: ErrorCodes.STORE_UNAVAILABLE,
           message: "Postgres commit failed.",
           cause
+        });
+      }
+      if (result.rowCount !== 1) {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message: "Postgres commit found no claimed row \u2014 the two-phase protocol requires claim() before commit().",
+          details: { key }
         });
       }
     },

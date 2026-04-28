@@ -5,7 +5,8 @@ var ErrorCodes = {
   SIGNATURE_TIMESTAMP_IN_FUTURE: "SIGNATURE_TIMESTAMP_IN_FUTURE",
   SIGNATURE_MISMATCH: "SIGNATURE_MISMATCH",
   MISSING_SECRET: "MISSING_SECRET",
-  MALFORMED_PAYLOAD: "MALFORMED_PAYLOAD"};
+  MALFORMED_PAYLOAD: "MALFORMED_PAYLOAD",
+  STORE_UNAVAILABLE: "STORE_UNAVAILABLE"};
 
 // src/errors/base.ts
 var PaySuiteError = class extends Error {
@@ -61,6 +62,12 @@ var ConfigError = class extends PaySuiteError {
     this.name = "ConfigError";
   }
 };
+var StoreError = class extends PaySuiteError {
+  constructor(opts) {
+    super(opts);
+    this.name = "StoreError";
+  }
+};
 
 // src/idempotency/ttl.ts
 var DEFAULT_COMMIT_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -88,8 +95,10 @@ async function withIdempotency(store, key, fn, opts = {}) {
 }
 
 // src/idempotency/store.ts
+var DEFAULT_MEMORY_MAX_KEYS = 1e4;
 function createMemoryStore(opts = {}) {
   const now = opts.now ?? (() => Date.now());
+  const maxKeys = opts.maxKeys ?? DEFAULT_MEMORY_MAX_KEYS;
   const map = /* @__PURE__ */ new Map();
   const purgeIfExpired = (key) => {
     const entry = map.get(key);
@@ -97,9 +106,21 @@ function createMemoryStore(opts = {}) {
       map.delete(key);
     }
   };
+  const sweepAndEvict = () => {
+    const cutoff = now();
+    for (const [key, entry] of map) {
+      if (entry.expiresAtMs <= cutoff) map.delete(key);
+    }
+    if (map.size < maxKeys) return;
+    for (const [key, entry] of map) {
+      if (map.size < maxKeys) break;
+      if (entry.state === "committed") map.delete(key);
+    }
+  };
   return {
     async claim(key, { claimTtlSeconds }) {
       purgeIfExpired(key);
+      if (map.size >= maxKeys) sweepAndEvict();
       const existing = map.get(key);
       if (existing !== void 0) {
         return existing.state === "committed" ? "committed" : "in-flight";
@@ -108,6 +129,14 @@ function createMemoryStore(opts = {}) {
       return "claimed";
     },
     async commit(key, { commitTtlSeconds }) {
+      const existing = map.get(key);
+      if (existing === void 0 || existing.state !== "claimed") {
+        throw new StoreError({
+          code: ErrorCodes.STORE_UNAVAILABLE,
+          message: "Memory store commit found no claimed key \u2014 the two-phase protocol requires claim() before commit().",
+          details: { key, observed: existing?.state ?? null }
+        });
+      }
       map.set(key, { state: "committed", expiresAtMs: now() + commitTtlSeconds * 1e3 });
     },
     async release(key) {
@@ -180,6 +209,63 @@ function timingSafeEqual(a, b) {
 // src/core/time.ts
 var systemClock = () => Date.now();
 
+// src/core/result.ts
+var ok = (value) => ({ ok: true, value });
+var err = (error) => ({ ok: false, error });
+
+// src/webhooks/parser.ts
+var utf8Decoder = /* @__PURE__ */ new TextDecoder("utf-8", { fatal: true });
+function parseEvent(rawPayload) {
+  let text;
+  if (typeof rawPayload === "string") {
+    text = rawPayload;
+  } else {
+    const bytes = rawPayload instanceof Uint8Array ? rawPayload : new Uint8Array(rawPayload);
+    try {
+      text = utf8Decoder.decode(bytes);
+    } catch (cause) {
+      return err(
+        new PaySuiteError({
+          code: ErrorCodes.MALFORMED_PAYLOAD,
+          message: "Payload is not valid UTF-8.",
+          cause
+        })
+      );
+    }
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (cause) {
+    return err(
+      new PaySuiteError({
+        code: ErrorCodes.MALFORMED_PAYLOAD,
+        message: "Payload is not valid JSON.",
+        cause
+      })
+    );
+  }
+  if (!isStripeEventShape(parsed)) {
+    return err(
+      new PaySuiteError({
+        code: ErrorCodes.MALFORMED_PAYLOAD,
+        message: "Payload does not match Stripe event shape."
+      })
+    );
+  }
+  return ok(parsed);
+}
+function isStripeEventShape(v) {
+  if (typeof v !== "object" || v === null) return false;
+  if (!("id" in v) || typeof v.id !== "string") return false;
+  if (!("type" in v) || typeof v.type !== "string") return false;
+  if (!("data" in v) || typeof v.data !== "object" || v.data === null) return false;
+  if (!("object" in v.data)) return false;
+  const inner = v.data.object;
+  if (typeof inner !== "object" || inner === null || Array.isArray(inner)) return false;
+  return true;
+}
+
 // src/webhooks/headers.ts
 function parseSignatureHeader(header) {
   if (header.length === 0) return null;
@@ -194,7 +280,7 @@ function parseSignatureHeader(header) {
     const value = trimmed.slice(eq + 1).trim();
     if (key === "t") {
       const n = Number(value);
-      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+      if (!Number.isInteger(n) || n < 0) return null;
       timestamp = n;
     } else if (key === "v1") {
       if (value.length === 0) return null;
@@ -282,6 +368,7 @@ async function verifyStripeSignature(opts) {
   const expectedMac = await hmacSha256(opts.secret, signedPayload);
   let matched = false;
   for (const candidateHex of parsed.v1Signatures) {
+    if (candidateHex.length !== 64) continue;
     let candidate;
     try {
       candidate = fromHex(candidateHex);
@@ -302,21 +389,18 @@ async function verifyStripeSignature(opts) {
       })
     };
   }
-  let event;
-  try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(payloadBytes);
-    event = JSON.parse(text);
-  } catch (cause) {
+  const parsedEvent = parseEvent(payloadBytes);
+  if (!parsedEvent.ok) {
     return {
       ok: false,
       error: new SignatureVerificationError({
         code: ErrorCodes.MALFORMED_PAYLOAD,
-        message: "Verified payload is not valid UTF-8 JSON.",
-        cause
+        message: parsedEvent.error.message,
+        cause: parsedEvent.error
       })
     };
   }
-  return { ok: true, event, receivedAt: nowMs };
+  return { ok: true, event: parsedEvent.value, receivedAt: nowMs };
 }
 
 // src/webhooks/handler.ts
@@ -333,6 +417,7 @@ function createWebhookHandler(opts) {
   const tolerance = opts.tolerance;
   const dispatcher = opts.dispatcher;
   const logger = opts.logger;
+  const inFlightStatus = opts.inFlightStatus ?? 503;
   return async function webhookHandler(request) {
     const headerValue = request.headers.get("stripe-signature");
     if (headerValue === null) {
@@ -375,7 +460,7 @@ function createWebhookHandler(opts) {
           return plainText(200, "Duplicate event \u2014 already committed.");
         }
         safeCall(opts.onInFlight, event.id);
-        return plainText(425, "Event already in-flight on another worker.");
+        return plainText(inFlightStatus, "Event already in-flight on another worker.");
       }
       return plainText(200, "OK");
     } catch (error) {
