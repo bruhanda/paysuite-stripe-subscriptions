@@ -30,7 +30,7 @@
   "homepage": "https://github.com/paysuite/stripe-subscriptions#readme",
   "type": "module",
   "sideEffects": false,
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
@@ -42,103 +42,83 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     },
     "./webhooks": {
       "types": "./dist/webhooks/index.d.ts",
-      "import": "./dist/webhooks/index.js",
-      "require": "./dist/webhooks/index.cjs"
+      "import": "./dist/webhooks/index.js"
     },
     "./events": {
       "types": "./dist/events/index.d.ts",
-      "import": "./dist/events/index.js",
-      "require": "./dist/events/index.cjs"
+      "import": "./dist/events/index.js"
     },
     "./state-machine": {
       "types": "./dist/state-machine/index.d.ts",
-      "import": "./dist/state-machine/index.js",
-      "require": "./dist/state-machine/index.cjs"
+      "import": "./dist/state-machine/index.js"
     },
     "./plans": {
       "types": "./dist/plans/index.d.ts",
-      "import": "./dist/plans/index.js",
-      "require": "./dist/plans/index.cjs"
+      "import": "./dist/plans/index.js"
     },
     "./idempotency": {
       "types": "./dist/idempotency/index.d.ts",
-      "import": "./dist/idempotency/index.js",
-      "require": "./dist/idempotency/index.cjs"
+      "import": "./dist/idempotency/index.js"
     },
     "./errors": {
       "types": "./dist/errors/index.d.ts",
-      "import": "./dist/errors/index.js",
-      "require": "./dist/errors/index.cjs"
+      "import": "./dist/errors/index.js"
     },
     "./adapters/next": {
       "types": "./dist/adapters/next/index.d.ts",
-      "import": "./dist/adapters/next/index.js",
-      "require": "./dist/adapters/next/index.cjs"
+      "import": "./dist/adapters/next/index.js"
     },
     "./adapters/hono": {
       "types": "./dist/adapters/hono/index.d.ts",
-      "import": "./dist/adapters/hono/index.js",
-      "require": "./dist/adapters/hono/index.cjs"
+      "import": "./dist/adapters/hono/index.js"
     },
     "./adapters/fastify": {
       "types": "./dist/adapters/fastify/index.d.ts",
-      "import": "./dist/adapters/fastify/index.js",
-      "require": "./dist/adapters/fastify/index.cjs"
+      "import": "./dist/adapters/fastify/index.js"
     },
     "./adapters/express": {
       "types": "./dist/adapters/express/index.d.ts",
-      "import": "./dist/adapters/express/index.js",
-      "require": "./dist/adapters/express/index.cjs"
+      "import": "./dist/adapters/express/index.js"
     },
     "./adapters/sveltekit": {
       "types": "./dist/adapters/sveltekit/index.d.ts",
-      "import": "./dist/adapters/sveltekit/index.js",
-      "require": "./dist/adapters/sveltekit/index.cjs"
+      "import": "./dist/adapters/sveltekit/index.js"
     },
     "./adapters/nitro": {
       "types": "./dist/adapters/nitro/index.d.ts",
-      "import": "./dist/adapters/nitro/index.js",
-      "require": "./dist/adapters/nitro/index.cjs"
+      "import": "./dist/adapters/nitro/index.js"
     },
     "./storage/memory": {
       "types": "./dist/storage/memory/index.d.ts",
-      "import": "./dist/storage/memory/index.js",
-      "require": "./dist/storage/memory/index.cjs"
+      "import": "./dist/storage/memory/index.js"
     },
     "./storage/redis": {
       "types": "./dist/storage/redis/index.d.ts",
-      "import": "./dist/storage/redis/index.js",
-      "require": "./dist/storage/redis/index.cjs"
+      "import": "./dist/storage/redis/index.js"
     },
     "./storage/kv": {
       "types": "./dist/storage/kv/index.d.ts",
-      "import": "./dist/storage/kv/index.js",
-      "require": "./dist/storage/kv/index.cjs"
+      "import": "./dist/storage/kv/index.js"
     },
     "./storage/durable-objects": {
       "types": "./dist/storage/durable-objects/index.d.ts",
-      "import": "./dist/storage/durable-objects/index.js",
-      "require": "./dist/storage/durable-objects/index.cjs"
+      "import": "./dist/storage/durable-objects/index.js"
     },
     "./storage/postgres": {
       "types": "./dist/storage/postgres/index.d.ts",
-      "import": "./dist/storage/postgres/index.js",
-      "require": "./dist/storage/postgres/index.cjs"
+      "import": "./dist/storage/postgres/index.js"
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js",
-      "require": "./dist/testing/index.cjs"
+      "import": "./dist/testing/index.js"
     },
     "./testing/fixtures": {
       "types": "./dist/testing/fixtures/index.d.ts",
-      "import": "./dist/testing/fixtures/index.js",
-      "require": "./dist/testing/fixtures/index.cjs"
+      "import": "./dist/testing/fixtures/index.js"
     },
     "./package.json": "./package.json"
   },
