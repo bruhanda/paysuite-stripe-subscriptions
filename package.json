@@ -120,6 +120,11 @@
       "import": "./dist/storage/kv/index.js",
       "require": "./dist/storage/kv/index.cjs"
     },
+    "./storage/durable-objects": {
+      "types": "./dist/storage/durable-objects/index.d.ts",
+      "import": "./dist/storage/durable-objects/index.js",
+      "require": "./dist/storage/durable-objects/index.cjs"
+    },
     "./storage/postgres": {
       "types": "./dist/storage/postgres/index.d.ts",
       "import": "./dist/storage/postgres/index.js",
@@ -129,6 +134,11 @@
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js",
       "require": "./dist/testing/index.cjs"
+    },
+    "./testing/fixtures": {
+      "types": "./dist/testing/fixtures/index.d.ts",
+      "import": "./dist/testing/fixtures/index.js",
+      "require": "./dist/testing/fixtures/index.cjs"
     },
     "./package.json": "./package.json"
   },
@@ -149,8 +159,10 @@
       "storage/memory": ["./dist/storage/memory/index.d.ts"],
       "storage/redis": ["./dist/storage/redis/index.d.ts"],
       "storage/kv": ["./dist/storage/kv/index.d.ts"],
+      "storage/durable-objects": ["./dist/storage/durable-objects/index.d.ts"],
       "storage/postgres": ["./dist/storage/postgres/index.d.ts"],
-      "testing": ["./dist/testing/index.d.ts"]
+      "testing": ["./dist/testing/index.d.ts"],
+      "testing/fixtures": ["./dist/testing/fixtures/index.d.ts"]
     }
   },
   "scripts": {
@@ -169,7 +181,7 @@
   },
   "peerDependencies": {
     "stripe": ">=15.0.0",
-    "zod": ">=3.22.0"
+    "zod": ">=3.22.0 || >=4.0.0"
   },
   "peerDependenciesMeta": {
     "zod": {
